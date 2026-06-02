@@ -37,6 +37,12 @@ if os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RAILWAY_PUBLIC_DOMAIN
         '.railway.app',
     ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://projetn.com',
+    'https://www.projetn.com',
+    'https://*.up.railway.app',
+]
+
 
 # Application definition
 
