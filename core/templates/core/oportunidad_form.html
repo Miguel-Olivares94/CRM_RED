@@ -1,0 +1,146 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Oportunidades{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x:hidden;">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <div class="card card-primary shadow-lg">
+      <div class="card-header card-header-primary d-flex align-items-center">
+        <i class="bi bi-graph-up-arrow me-2"></i>
+        <span>{{ titulo }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+              <div><strong>Errores:</strong>{% for e in form.non_field_errors %}<div class="mt-1">{{ e }}</div>{% endfor %}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          <!-- ── OPORTUNIDAD ──────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-building me-2"></i>Oportunidad</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.cliente.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.cliente }}
+                {% if form.cliente.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.cliente.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.usuario.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.usuario }}
+                {% if form.usuario.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.usuario.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.estado.label_tag }}</div>
+                {{ form.estado }}
+                {% if form.estado.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.estado.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.etapa.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.etapa }}
+                {% if form.etapa.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.etapa.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── VALOR ───────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-currency-dollar me-2"></i>Valor</div>
+            <div class="row g-3">
+              <input type="hidden" name="moneda" value="CLP">
+              <div class="col-12 col-sm-8">
+                <div class="form-label-wrapper">{{ form.monto.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-cash-coin input-icon"></i>
+                  {{ form.monto }}
+                </div>
+                {% if form.monto.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.monto.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.comision_estimada.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-percent input-icon"></i>
+                  {{ form.comision_estimada }}
+                </div>
+                {% if form.comision_estimada.errors %}<div class="field-error">{{ form.comision_estimada.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.probabilidad.label_tag }}</div>
+                {{ form.probabilidad }}
+                {% if form.probabilidad.errors %}<div class="field-error">{{ form.probabilidad.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── PRODUCTO ─────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-box-seam me-2"></i>Producto</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-8">
+                <div class="form-label-wrapper">{{ form.productos.label_tag }}</div>
+                {{ form.productos }}
+                {% if form.productos.errors %}<div class="field-error">{{ form.productos.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.lineas.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-sim input-icon"></i>
+                  {{ form.lineas }}
+                </div>
+                {% if form.lineas.errors %}<div class="field-error">{{ form.lineas.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── FECHAS ───────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-calendar3 me-2"></i>Fechas</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.fecha_cierre_estimada.label_tag }}</div>
+                {{ form.fecha_cierre_estimada }}
+                {% if form.fecha_cierre_estimada.errors %}<div class="field-error">{{ form.fecha_cierre_estimada.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.proximo_contacto.label_tag }}</div>
+                {{ form.proximo_contacto }}
+                {% if form.proximo_contacto.errors %}<div class="field-error">{{ form.proximo_contacto.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── OBSERVACIONES ───────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-chat-left-text me-2"></i>Observaciones</div>
+            {{ form.observaciones }}
+            {% if form.observaciones.errors %}<div class="field-error mt-1">{{ form.observaciones.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+              {% if accion == "crear" %}<i class="bi bi-graph-up-arrow me-2"></i>Crear Oportunidad
+              {% else %}<i class="bi bi-check-circle me-2"></i>Actualizar Oportunidad{% endif %}
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'core/_form_styles.html' %}
+{% endblock %}

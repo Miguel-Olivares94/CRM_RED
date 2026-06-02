@@ -1,0 +1,401 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Formulario{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x: hidden;">
+    <div class="col-12 col-md-8 col-lg-7 col-xl-6">
+        <div class="card card-primary shadow-lg">
+            <div class="card-header card-header-primary d-flex align-items-center">
+                <i class="bi bi-pencil-square me-2"></i>
+                <span>{{ titulo }}</span>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 18px;"></i>
+                                <div>
+                                    <strong>Errores en el formulario:</strong>
+                                    {% for error in form.non_field_errors %}
+                                        <div style="margin-top: 5px;">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+
+                    {% for field in form %}
+                        {% if field.field.widget.input_type != 'hidden' %}
+                            <div class="form-group mb-4">
+                                {% if field.field.widget.input_type != 'checkbox' %}
+                                <div class="form-label-wrapper">
+                                    {{ field.label_tag }}
+                                    {% if field.field.required %}
+                                        <span class="text-danger ms-1" title="Campo requerido">*</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                <div class="form-field-wrapper">
+                                    {% if field.field.widget.input_type == 'textarea' %}
+                                        {{ field }}
+                                    {% elif field.field.widget.input_type == 'select' %}
+                                        {{ field }}
+                                    {% elif field.field.widget.input_type == 'checkbox' %}
+                                        <div class="form-check-custom d-flex align-items-center gap-3 px-3 py-2 w-100" style="border: 2px solid #e0e7ff; border-radius: 8px; background-color: #f8faff;">
+                                            {{ field.label_tag }}
+                                            {{ field }}
+                                        </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                </div>
+
+                                {% if field.errors %}
+                                    <div class="invalid-feedback d-flex align-items-start mt-2">
+                                        <i class="bi bi-exclamation-circle me-2 mt-1" style="flex-shrink: 0; font-size: 14px;"></i>
+                                        <div>
+                                            {% for error in field.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted d-block mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>{{ field.help_text|safe }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="form-actions d-flex gap-3 mt-5 pt-4 border-top">
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                            <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                        </button>
+                        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Auto-rellenar formulario cuando se selecciona oportunidad -->
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const oportunidadSelect = document.querySelector('select[name="oportunidad"]');
+                        const contactoSelect = document.querySelector('select[name="contacto"]');
+                        const fechaHoraInput = document.querySelector('input[name="fecha_hora"]');
+                        
+                        if (oportunidadSelect) {
+                            oportunidadSelect.addEventListener('change', function() {
+                                const oportunidadId = this.value;
+                                
+                                if (!oportunidadId) {
+                                    // Limpiar si no hay oportunidad
+                                    if (contactoSelect) contactoSelect.value = '';
+                                    return;
+                                }
+                                
+                                // Obtener contactos de la oportunidad
+                                fetch(`/api/oportunidades/${oportunidadId}/contactos/`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success && contactoSelect) {
+                                            // Limpiar opciones previas (excepto la primera vacía)
+                                            while (contactoSelect.options.length > 1) {
+                                                contactoSelect.remove(1);
+                                            }
+                                            
+                                            // Agregar nuevos contactos
+                                            data.contactos.forEach(contacto => {
+                                                const option = document.createElement('option');
+                                                option.value = contacto.id;
+                                                option.text = contacto.nombre;
+                                                contactoSelect.appendChild(option);
+                                            });
+                                        }
+                                        
+                                        // Auto-rellenar fecha y hora
+                                        if (fechaHoraInput && data.current_time) {
+                                            fechaHoraInput.value = data.current_time;
+                                        }
+                                    })
+                                    .catch(error => console.error('Error:', error));
+                            });
+                        }
+                    });
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilos generales del formulario */
+    .form-group {
+        position: relative;
+    }
+
+    .form-label-wrapper {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-label-wrapper label {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    /* Campos de entrada */
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 2px solid #e0e7ff;
+        padding: 0.7rem 0.9rem;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #f8faff;
+        font-weight: 500;
+    }
+
+    .form-control::placeholder {
+        color: #999;
+        font-weight: 400;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #D63031;
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(214, 48, 49, 0.1);
+        outline: none;
+    }
+
+    .form-control:hover, .form-select:hover {
+        border-color: #FF7F7F;
+    }
+
+    /* Textareas */
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    textarea.form-control:focus {
+        background-color: #ffffff;
+    }
+
+    /* Campos con error */
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc3545 !important;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+    }
+
+    .form-control.is-invalid:focus, .form-select.is-invalid:focus {
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+    }
+
+    /* Campos con éxito */
+    .form-control.is-valid, .form-select.is-valid {
+        border-color: #28a745 !important;
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+    }
+
+    .form-control.is-valid:focus, .form-select.is-valid:focus {
+        box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+    }
+
+    /* Labels */
+    label {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+        display: block;
+    }
+
+    /* Mensajes de error */
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 13px;
+        display: flex !important;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background-color: #fff5f5;
+        border-left: 3px solid #dc3545;
+        border-radius: 4px;
+    }
+
+    /* Texto de ayuda */
+    .form-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    /* Checkboxes personalizados */
+    .form-check-custom {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-check-custom input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #D63031;
+    }
+
+    .form-check-custom label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    /* Botones */
+    .btn-primary {
+        background: linear-gradient(135deg, #FF4D4D 0%, #D63031 100%);
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        box-shadow: 0 4px 12px rgba(255, 77, 77, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px rgba(255, 77, 77, 0.5);
+        background: linear-gradient(135deg, #D63031 0%, #C23030 100%);
+    }
+
+    .btn-outline-secondary {
+        border: 2px solid #dee2e6;
+        color: #666;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        border-color: #D63031;
+        color: #D63031;
+        background-color: transparent;
+    }
+
+    .btn-lg {
+        font-size: 14px;
+        padding: 0.8rem 1.5rem;
+    }
+
+    .btn i {
+        margin-right: 0.5rem;
+    }
+
+    /* Forma de acciones */
+    .form-actions {
+        background: linear-gradient(135deg, #f5f9ff 0%, #fafbfc 100%);
+        padding: 1.5rem !important;
+        margin: 2rem -1rem -1rem -1rem !important;
+        border-radius: 0 0 8px 8px;
+    }
+
+    /* Card del formulario */
+    .card.card-primary {
+        border: none;
+        box-shadow: 0 4px 20px rgba(255, 77, 77, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .card.card-primary:hover {
+        box-shadow: 0 8px 30px rgba(255, 77, 77, 0.2);
+    }
+
+    .card-header-primary {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .form-actions .btn {
+            width: 100%;
+        }
+
+        .col-12, .col-md-8, .col-lg-7, .col-xl-6 {
+            padding: 0 1rem;
+        }
+    }
+
+    /* Animación de entrada */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .card {
+        animation: slideInUp 0.3s ease;
+    }
+
+    .form-group {
+        animation: slideInUp 0.3s ease forwards;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.05s; }
+    .form-group:nth-child(2) { animation-delay: 0.1s; }
+    .form-group:nth-child(3) { animation-delay: 0.15s; }
+    .form-group:nth-child(4) { animation-delay: 0.2s; }
+    .form-group:nth-child(5) { animation-delay: 0.25s; }
+</style>
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet"/>
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        border: 2px solid #e0e7ff; border-radius: 8px;
+        background-color: #f8faff; min-height: 42px; font-size: 14px;
+    }
+    .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+    .select2-container--bootstrap-5.select2-container--open .select2-selection {
+        border-color: #D63031; box-shadow: 0 0 0 3px rgba(214,48,49,0.1);
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+        border: 2px solid #D63031; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background-color: #D63031 !important;
+    }
+    input[type="range"] { cursor: pointer; }
+</style>
+
+<!-- jQuery + Select2 + Mejoras CRM -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'core/js/forms_enhanced.js' %}?v=6"></script>
+
+{% endblock %}

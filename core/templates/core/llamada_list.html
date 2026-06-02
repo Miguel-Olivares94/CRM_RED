@@ -1,0 +1,143 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Gestiones - CRM Comercial{% endblock %}
+{% block page_title %}Gestiones{% endblock %}
+{% block breadcrumb_item %}Registro de Gestiones{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-telephone me-2"></i>Gestiones</h2>
+        <p style="color: #6c757d;">Registro de todas las gestiones y contactos</p>
+    </div>
+    <a href="{% url 'core:llamada_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus me-2"></i>Registrar Gestión
+    </a>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <select name="tipo" class="form-select">
+                    <option value="">Todos los tipos</option>
+                    <option value="LLAMADA" {% if request.GET.tipo == 'LLAMADA' %}selected{% endif %}>Llamada</option>
+                    <option value="EMAIL" {% if request.GET.tipo == 'EMAIL' %}selected{% endif %}>Email</option>
+                    <option value="REUNION" {% if request.GET.tipo == 'REUNION' %}selected{% endif %}>Reunión</option>
+                    <option value="VIDEO" {% if request.GET.tipo == 'VIDEO' %}selected{% endif %}>Videollamada</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="resultado" class="form-select">
+                    <option value="">Todos los resultados</option>
+                    <option value="EXITOSA" {% if request.GET.resultado == 'EXITOSA' %}selected{% endif %}>Exitosa</option>
+                    <option value="FALLIDA" {% if request.GET.resultado == 'FALLIDA' %}selected{% endif %}>Fallida</option>
+                    <option value="SIN_RESPUESTA" {% if request.GET.resultado == 'SIN_RESPUESTA' %}selected{% endif %}>Sin respuesta</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Gestiones Registradas ({{ llamadas|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if llamadas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Contacto</th>
+                            <th>Resultado</th>
+                            <th>Duración</th>
+                            <th>Notas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for llamada in llamadas %}
+                            <tr>
+                                <td>{{ llamada.fecha_hora|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'core:oportunidad_detail' llamada.oportunidad.pk %}">
+                                        {{ llamada.oportunidad.cliente.nombre_empresa|truncatewords:2 }}
+                                    </a>
+                                </td>
+                                <td>{{ llamada.get_tipo_display }}</td>
+                                <td>{{ llamada.contacto.nombre|default:"-" }}</td>
+                                <td>
+                                    {% if llamada.resultado == 'EXITOSA' %}
+                                        <span class="badge bg-success">Exitosa</span>
+                                    {% elif llamada.resultado == 'FALLIDA' %}
+                                        <span class="badge bg-danger">Fallida</span>
+                                    {% elif llamada.resultado == 'SIN_RESPUESTA' %}
+                                        <span class="badge bg-warning">Sin respuesta</span>
+                                    {% elif llamada.resultado == 'PENDIENTE' %}
+                                        <span class="badge bg-secondary">Pendiente</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ llamada.duracion_minutos|default:"-" }} min</td>
+                                <td>{{ llamada.nota_ejecutiva|truncatewords:3|default:"-" }}</td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'core:llamada_detail' llamada.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalle">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'core:llamada_update' llamada.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay gestiones registradas</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

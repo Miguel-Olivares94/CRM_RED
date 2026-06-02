@@ -1,0 +1,120 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Comisiones - CRM Comercial{% endblock %}
+{% block page_title %}Comisiones{% endblock %}
+{% block breadcrumb_item %}Control de Comisiones{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-cash-coin me-2"></i>Comisiones</h2>
+        <p style="color: #6c757d;">Control de comisiones calculadas y pagadas</p>
+    </div>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="CALCULADA" {% if request.GET.estado == 'CALCULADA' %}selected{% endif %}>Calculada</option>
+                    <option value="APROBADA" {% if request.GET.estado == 'APROBADA' %}selected{% endif %}>Aprobada</option>
+                    <option value="PAGADA" {% if request.GET.estado == 'PAGADA' %}selected{% endif %}>Pagada</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Comisiones ({{ comisiones|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if comisiones %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Período</th>
+                            <th>Líneas Portabilidad</th>
+                            <th>Líneas Nueva</th>
+                            <th>Líneas M2M</th>
+                            <th class="text-end">Total a Pagar</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for com in comisiones %}
+                            <tr>
+                                <td>{{ com.usuario.get_full_name }}</td>
+                                <td><strong>{{ com.periodo }}</strong></td>
+                                <td>{{ com.lineas_portabilidad_vendidas }}</td>
+                                <td>{{ com.lineas_nueva_vendidas }}</td>
+                                <td>{{ com.lineas_m2m_vendidas }}</td>
+                                <td class="text-end"><strong>CLP {{ com.total_a_pagar|floatformat:0 }}</strong></td>
+                                <td>
+                                    {% if com.estado == 'CALCULADA' %}
+                                        <span class="badge bg-warning">Calculada</span>
+                                    {% elif com.estado == 'APROBADA' %}
+                                        <span class="badge bg-info">Aprobada</span>
+                                    {% elif com.estado == 'PAGADA' %}
+                                        <span class="badge bg-success">Pagada</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'core:comision_detail' com.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay comisiones registradas</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

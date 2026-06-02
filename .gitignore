@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
+*.sqlite3
+staticfiles/
+media/
+local_settings.py
+db.sqlite3
+
+# Entorno virtual
+.venv/
+venv/
+env/
+ENV/
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+celerybeat-schedule
+celerybeat.pid
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node (si hubiera assets)
+node_modules/

@@ -1,0 +1,288 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Importar Clientes - CRM{% endblock %}
+{% block page_title %}Importar Cartera de Clientes{% endblock %}
+{% block breadcrumb_item %}Importar Clientes{% endblock %}
+
+{% block content %}
+
+<!-- Indicador de pasos -->
+<div class="d-flex align-items-center mb-4 gap-2">
+    <span class="badge rounded-pill {% if step == 'upload' %}bg-primary{% else %}bg-success{% endif %} px-3 py-2">1. Subir archivo</span>
+    <div style="height:2px;width:40px;background:#dee2e6;"></div>
+    <span class="badge rounded-pill {% if step == 'preview' %}bg-primary{% elif step == 'resultado' %}bg-success{% else %}bg-secondary{% endif %} px-3 py-2">2. Vista previa</span>
+    <div style="height:2px;width:40px;background:#dee2e6;"></div>
+    <span class="badge rounded-pill {% if step == 'resultado' %}bg-primary{% else %}bg-secondary{% endif %} px-3 py-2">3. Resultado</span>
+</div>
+
+{% if error %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ error }}</div>
+{% endif %}
+
+
+{# ─── PASO 1: SUBIR ARCHIVO ─── #}
+{% if step == 'upload' %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-upload me-2"></i>Cargar archivo de clientes</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- Selector de ejecutivo (solo si no es ejecutivo) -->
+                    {% if not es_ejecutivo %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Asignar clientes a:</label>
+                        <select name="usuario_asignado" class="form-select" required>
+                            <option value="">-- Selecciona un ejecutivo --</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.pk }}">{{ u.get_full_name|default:u.email }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Los clientes importados se asignarán a este ejecutivo.</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-person-check me-2"></i>Los clientes se asignarán automáticamente a <strong>tu usuario</strong>.
+                    </div>
+                    {% endif %}
+
+                    <!-- Upload de archivo -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Archivo Excel o CSV</label>
+                        <input type="file" name="archivo" class="form-control" accept=".xlsx,.xls,.csv" required>
+                        <small class="text-muted">Formatos aceptados: .xlsx, .xls, .csv</small>
+                    </div>
+
+                    <!-- Opción de reasignación -->
+                    <div class="mb-4 p-3 bg-light rounded border">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="reasignar_existentes" id="reasignar_existentes">
+                            <label class="form-check-label fw-bold" for="reasignar_existentes">
+                                Reasignar clientes ya existentes
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Desactivado (recomendado):</strong> Solo actualiza datos del cliente (sector, líneas, etc.) pero respeta al ejecutivo que ya lo tiene asignado.<br>
+                            <strong>Activado:</strong> Sobreescribe la asignación de todos los clientes existentes al ejecutivo seleccionado arriba.
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-2"></i>Ver vista previa
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Formato esperado -->
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-table me-2"></i>Columnas del archivo</div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr><th>Columna</th><th>Requerida</th><th>Ejemplo</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>rut</code></td><td><span class="badge bg-danger">Sí</span></td><td>76228224-5</td></tr>
+                        <tr><td><code>nombre_empresa</code></td><td><span class="badge bg-danger">Sí</span></td><td>EMPRESA SA</td></tr>
+                        <tr><td><code>sector</code></td><td><span class="badge bg-secondary">No</span></td><td>Tecnología</td></tr>
+                        <tr><td><code>estado</code></td><td><span class="badge bg-secondary">No</span></td><td>ACTIVO</td></tr>
+                        <tr><td><code>segmento</code></td><td><span class="badge bg-secondary">No</span></td><td>GRANDE</td></tr>
+                        <tr><td><code>comuna</code></td><td><span class="badge bg-secondary">No</span></td><td>Santiago</td></tr>
+                        <tr><td><code>bam</code>, <code>m2m</code>, <code>voz</code></td><td><span class="badge bg-secondary">No</span></td><td>5</td></tr>
+                        <tr><td><code>edv</code></td><td><span class="badge bg-secondary">No</span></td><td>Juan Perez</td></tr>
+                    </tbody>
+                </table>
+                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Si el RUT ya existe en el sistema, el registro se <strong>actualizará</strong>. Si es nuevo, se <strong>creará</strong>.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{# ─── PASO 2: PREVIEW ─── #}
+{% elif step == 'preview' %}
+<!-- Resumen -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body py-3">
+                <div style="font-size:2rem;font-weight:700;color:#51cf66;">{{ nuevos }}</div>
+                <div class="text-muted">Nuevos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body py-3">
+                <div style="font-size:2rem;font-weight:700;color:#f0ad4e;">{{ actualizar }}</div>
+                <div class="text-muted">Se actualizarán</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-danger">
+            <div class="card-body py-3">
+                <div style="font-size:2rem;font-weight:700;color:#d32f2f;">{{ con_error }}</div>
+                <div class="text-muted">Con error</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div style="font-size:2rem;font-weight:700;color:#333;">{{ total }}</div>
+                <div class="text-muted">Total filas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-person-check me-2"></i>
+    Ejecutivo seleccionado: <strong>{{ usuario_asignado.get_full_name|default:usuario_asignado.email }}</strong>
+</div>
+{% if reasignar %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Reasignación activada:</strong> Los clientes existentes serán reasignados al ejecutivo seleccionado.
+</div>
+{% else %}
+<div class="alert alert-success">
+    <i class="bi bi-shield-check me-2"></i>
+    <strong>Asignaciones protegidas:</strong> Los clientes que ya tienen un ejecutivo asignado conservarán su asignación actual. Solo se actualizarán sus datos.
+</div>
+{% endif %}
+
+<!-- Tabla de preview -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table me-2"></i>Detalle por fila</span>
+        <small class="text-muted">Mostrando primeras 100 filas</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th>Fila</th>
+                        <th>RUT</th>
+                        <th>Nombre Empresa</th>
+                        <th>Estado</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview|slice:":100" %}
+                    <tr>
+                        <td class="text-muted">{{ row.fila }}</td>
+                        <td><code>{{ row.rut }}</code></td>
+                        <td>{{ row.nombre }}</td>
+                        <td>
+                            {% if row.estado == 'NUEVO' %}
+                                <span class="badge bg-success">Nuevo</span>
+                            {% elif row.estado == 'ACTUALIZAR' %}
+                                <span class="badge bg-warning text-dark">Actualizar</span>
+                            {% else %}
+                                <span class="badge bg-danger">Error</span>
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">{{ row.detalle }}</small></td>
+                    </tr>
+                    {% endfor %}
+                    {% if preview|length > 100 %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-2">
+                            ... y {{ preview|length|add:"-100" }} filas más
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Botones -->
+<div class="d-flex gap-3">
+    {% if nuevos > 0 or actualizar > 0 %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirmar">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check2-circle me-2"></i>Confirmar e importar {{ nuevos|add:actualizar }} clientes
+        </button>
+    </form>
+    {% endif %}
+    <a href="{% url 'core:cliente_import' %}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-arrow-left me-2"></i>Subir otro archivo
+    </a>
+</div>
+
+
+{# ─── PASO 3: RESULTADO ─── #}
+{% elif step == 'resultado' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-center border-success">
+            <div class="card-body py-4">
+                <div style="font-size:3rem;font-weight:700;color:#51cf66;">{{ creados }}</div>
+                <div class="fw-bold">Clientes creados</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-warning">
+            <div class="card-body py-4">
+                <div style="font-size:3rem;font-weight:700;color:#f0ad4e;">{{ actualizados }}</div>
+                <div class="fw-bold">Clientes actualizados</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center {% if filas_incompletas or errores_tecnicos %}border-secondary{% endif %}">
+            <div class="card-body py-4">
+                <div style="font-size:3rem;font-weight:700;color:#6c757d;">{{ filas_incompletas|length|add:errores_tecnicos|length }}</div>
+                <div class="fw-bold">Filas omitidas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if filas_incompletas %}
+<div class="alert alert-secondary d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-info-circle fs-4 mt-1 text-secondary"></i>
+    <div>
+        <strong>Se encontraron {{ filas_incompletas|length }} fila{% if filas_incompletas|length != 1 %}s{% endif %} sin nombre de empresa.</strong><br>
+        Estos registros del archivo Excel no tenían datos suficientes para ser importados y fueron omitidos de forma segura. No afecta la importación del resto de clientes.<br>
+        <small class="text-muted">Si necesitas importarlos, completa los datos faltantes en el archivo y vuelve a importar — los demás registros ya importados no se duplicarán.</small>
+    </div>
+</div>
+{% endif %}
+
+{% if errores_tecnicos %}
+<div class="alert alert-warning d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-exclamation-triangle fs-4 mt-1"></i>
+    <div>
+        <strong>{{ errores_tecnicos|length }} registro{% if errores_tecnicos|length != 1 %}s{% endif %} no se pudieron guardar.</strong><br>
+        Ocurrió un error temporal al procesar estos RUTs. Puedes volver a importar el archivo — los registros ya guardados no se duplicarán.<br>
+        <small class="text-muted">RUTs afectados: {{ errores_tecnicos|join:", " }}</small>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex gap-3 mt-2">
+    <a href="{% url 'core:cliente_list' %}" class="btn btn-primary btn-lg">
+        <i class="bi bi-people me-2"></i>Ver listado de clientes
+    </a>
+    <a href="{% url 'core:cliente_import' %}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-upload me-2"></i>Importar otro archivo
+    </a>
+</div>
+
+{% endif %}
+
+{% endblock %}

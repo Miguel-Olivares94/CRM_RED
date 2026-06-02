@@ -1,0 +1,385 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Contactos - CRM Comercial{% endblock %}
+{% block page_title %}Contactos{% endblock %}
+{% block breadcrumb_item %}Listado de Contactos{% endblock %}
+
+{% block content %}
+<script>
+// Función para abrir Outlook local o fallback a web
+function openOutlookCalendar(event) {
+    event.preventDefault();
+    
+    // Primero intentar abrir Outlook local
+    const outlookLocal = "outlook:new:IPM.Appointment";
+    const outlookWeb = "https://outlook.live.com/calendar/0/new";
+    
+    // Crear un iframe temporal para intentar el protocolo local
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = outlookLocal;
+    document.body.appendChild(iframe);
+    
+    // Después de 2.5 segundos, si no se abrió Outlook local, abrir versión web
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+        window.open(outlookWeb, '_blank');
+    }, 2500);
+}
+
+// Función para abrir Teams local o fallback a web
+function openTeams(event, email) {
+    event.preventDefault();
+    
+    // Primero intentar abrir Teams local
+    const teamsLocal = `msteams://l/chat/0/0?users=${email}`;
+    const teamsWeb = `https://teams.microsoft.com/l/chat/0/0?users=${email}`;
+    
+    // Crear un iframe temporal para intentar el protocolo local
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = teamsLocal;
+    document.body.appendChild(iframe);
+    
+    // Después de 2.5 segundos, si no se abrió Teams local, abrir versión web
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+        window.open(teamsWeb, '_blank');
+    }, 2500);
+}
+</script>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-people-fill me-2"></i>Contactos</h2>
+        <p style="color: #6c757d;">Gestión de personas de contacto</p>
+    </div>
+    <a href="{% url 'core:contacto_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus me-2"></i>Nuevo Contacto
+    </a>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, email..." value="{{ request.GET.q }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Listado de Contactos ({{ contactos|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if contactos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cliente</th>
+                            <th>Cargo</th>
+                            <th>Rol</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
+                            <th>Activo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contacto in contactos %}
+                            <tr>
+                                <td><strong>{{ contacto.nombre }}</strong></td>
+                                <td>
+                                    <a href="{% url 'core:cliente_detail' contacto.cliente.pk %}">
+                                        {{ contacto.cliente.nombre_empresa|truncatewords:2 }}
+                                    </a>
+                                </td>
+                                <td>{{ contacto.cargo|default:"-" }}</td>
+                                <td>
+                                    {% if contacto.rol == 'DECISOR' %}
+                                        <span class="badge bg-danger">Decisor</span>
+                                    {% elif contacto.rol == 'INFLUENCIADOR' %}
+                                        <span class="badge bg-warning">Influenciador</span>
+                                    {% elif contacto.rol == 'USUARIO' %}
+                                        <span class="badge bg-info">Usuario</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Otro</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ contacto.email|default:"-" }}</td>
+                                <td>{{ contacto.telefono_movil|default:contacto.telefono_fijo|default:"-" }}</td>
+                                <td>
+                                    {% if contacto.activo %}
+                                        <span class="badge bg-success">Sí</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <!-- EMAIL -->
+                                        {% if contacto.email %}
+                                        {% with etapa=contacto.oportunidad_abierta.get_etapa_display|default:"Propuesta" %}
+                                        {% with asunto="Seguimiento - "|add:contacto.cliente.nombre_empresa|add:" - "|add:etapa %}
+                                        <a href="mailto:{{ contacto.email }}?subject={{ asunto|urlencode }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="Email a {{ contacto.nombre }}"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-envelope"></i>
+                                        </a>
+                                        {% endwith %}
+                                        {% endwith %}
+                                        {% endif %}
+                                        
+                                        <!-- TEAMS -->
+                                        {% if contacto.email %}
+                                        <a href="#" 
+                                           onclick="openTeams(event, '{{ contacto.email }}')"
+                                           class="btn btn-sm btn-outline-info" 
+                                           title="Teams con {{ contacto.nombre }}"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-camera-video"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- WHATSAPP -->
+                                        {% if contacto.telefono_movil %}
+                                        <a href="https://wa.me/{{ contacto.telefono_movil|default:contacto.telefono_fijo|stringformat:'s'|slugify }}" 
+                                           target="_blank"
+                                           class="btn btn-sm btn-outline-success" 
+                                           title="WhatsApp a {{ contacto.nombre }}"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-whatsapp"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- OUTLOOK CALENDAR -->
+                                        <a href="#" 
+                                           onclick="openOutlookCalendar(event)"
+                                           class="btn btn-sm btn-outline-dark" 
+                                           title="Agendar en Outlook"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-calendar2-check"></i>
+                                        </a>
+
+                                        <!-- PREPARAR CONTACTO IA -->
+                                        <button onclick="prepararContacto({{ contacto.pk }}, '{{ contacto.nombre }}', '{{ contacto.cargo|default:'' }}', '{{ contacto.cliente.nombre_empresa|truncatewords:3 }}')"
+                                           class="btn btn-sm btn-primary"
+                                           title="Preparar contacto con IA"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-stars"></i>
+                                        </button>
+
+                                        <!-- REGISTRAR GESTIÓN -->
+                                        <a href="{% url 'core:llamada_create' %}?contacto={{ contacto.pk }}"
+                                           class="btn btn-sm btn-outline-warning"
+                                           title="Registrar gestión con {{ contacto.nombre }}"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-check2-circle"></i>
+                                        </a>
+
+                                        <!-- VER DETALLE -->
+                                        <a href="{% url 'core:contacto_detail' contacto.pk %}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="Ver detalle"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        <!-- EDITAR -->
+                                        <a href="{% url 'core:contacto_update' contacto.pk %}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Editar contacto"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+
+                                        <!-- ELIMINAR (solo admin) -->
+                                        {% if user_role == 'admin' or user_role == 'superadmin' %}
+                                        <a href="{% url 'core:contacto_delete' contacto.pk %}"
+                                           class="btn btn-sm btn-outline-danger"
+                                           title="Eliminar"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay contactos registrados</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Modal IA Preparar Contacto -->
+<div class="modal fade" id="modalPreparar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border:none;border-radius:12px;overflow:hidden;">
+            <!-- Header degradado rojo CLARO -->
+            <div class="modal-header border-0 text-white px-4 py-3" style="background:linear-gradient(135deg,#E8000D 0%,#9B0000 100%);">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:13px;">
+                            <i class="bi bi-stars me-1"></i>Asistente IA
+                        </span>
+                    </div>
+                    <h5 class="modal-title fw-bold mb-0" id="modal-nombre-contacto" style="font-size:1.2rem;"></h5>
+                    <small id="modal-cargo-empresa" class="opacity-75"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body p-0" id="modal-ia-body">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-danger mb-3" role="status" style="width:2.5rem;height:2.5rem;"></div>
+                    <p class="text-muted mb-0 fw-semibold">Analizando perfil del contacto...</p>
+                    <small class="text-muted">Esto puede tardar unos segundos</small>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer border-0 px-4 pb-3 pt-0" id="modal-ia-footer" style="display:none;">
+                <a id="modal-btn-gestion" href="#" class="btn btn-danger px-4">
+                    <i class="bi bi-check2-circle me-2"></i>Registrar gestión ahora
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function prepararContacto(id, nombre, cargo, empresa) {
+    // Header dinámico
+    document.getElementById('modal-nombre-contacto').textContent = nombre;
+    document.getElementById('modal-cargo-empresa').textContent = (cargo && empresa) ? `${cargo} · ${empresa}` : (empresa || '');
+    document.getElementById('modal-btn-gestion').href = `/gestiones/nueva/?contacto=${id}`;
+    document.getElementById('modal-ia-footer').style.display = 'none';
+
+    const body = document.getElementById('modal-ia-body');
+    body.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger mb-3" role="status" style="width:2.5rem;height:2.5rem;"></div>
+            <p class="text-muted mb-0 fw-semibold">Analizando perfil de ${nombre}...</p>
+            <small class="text-muted">Esto puede tardar unos segundos</small>
+        </div>`;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalPreparar'));
+    modal.show();
+
+    fetch(`/api/v1/ventas/preparar-contacto/${id}/`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) {
+                body.innerHTML = `<div class="p-4"><div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i>${d.error}</div></div>`;
+                return;
+            }
+            const temas = (d.temas_de_interes || []).map((t, i) => {
+                const colors = ['#E8000D','#B80000','#CC0000'];
+                const label = t.length > 45 ? t.slice(0, 42) + '…' : t;
+                return `<span class="badge me-1 mb-2 px-2 py-1" title="${t}" style="background:${colors[i%3]};font-size:0.72rem;font-weight:500;white-space:normal;display:inline-block;max-width:100%;word-break:break-word;">${label}</span>`;
+            }).join('');
+
+            body.innerHTML = `
+            <div class="p-0">
+                <!-- Fila superior: Perfil + Cómo abordar -->
+                <div class="row g-0">
+                    <div class="col-md-6 p-4" style="background:#FAFAFA;border-right:1px solid #F0E0E0;border-bottom:1px solid #F0E0E0;">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:34px;height:34px;background:#E8000D;flex-shrink:0;">
+                                <i class="bi bi-person-fill" style="font-size:14px;"></i>
+                            </div>
+                            <span class="fw-bold" style="color:#E8000D;font-size:0.85rem;text-transform:uppercase;letter-spacing:.5px;">Perfil del contacto</span>
+                        </div>
+                        <p class="mb-0 text-dark" style="font-size:0.88rem;line-height:1.6;">${d.perfil_contacto}</p>
+                    </div>
+                    <div class="col-md-6 p-4" style="background:#FAFAFA;border-bottom:1px solid #F0E0E0;">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:34px;height:34px;background:#9B0000;flex-shrink:0;">
+                                <i class="bi bi-chat-quote-fill" style="font-size:14px;"></i>
+                            </div>
+                            <span class="fw-bold" style="color:#9B0000;font-size:0.85rem;text-transform:uppercase;letter-spacing:.5px;">Cómo abordarle</span>
+                        </div>
+                        <p class="mb-0 text-dark" style="font-size:0.88rem;line-height:1.6;">${d.como_abordar}</p>
+                    </div>
+                </div>
+                <!-- Fila inferior: Temas + Próximo paso -->
+                <div class="row g-0">
+                    <div class="col-md-6 p-4" style="border-right:1px solid #F0E0E0;overflow:hidden;">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#FFF3CD;flex-shrink:0;">
+                                <i class="bi bi-lightbulb-fill text-warning" style="font-size:14px;"></i>
+                            </div>
+                            <span class="fw-bold" style="color:#856404;font-size:0.85rem;text-transform:uppercase;letter-spacing:.5px;">Temas de interés</span>
+                        </div>
+                        <div>${temas || '<span class="text-muted small">No identificados</span>'}</div>
+                    </div>
+                    <div class="col-md-6 p-4">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:34px;height:34px;background:#198754;flex-shrink:0;">
+                                <i class="bi bi-arrow-right-circle-fill" style="font-size:14px;"></i>
+                            </div>
+                            <span class="fw-bold" style="color:#198754;font-size:0.85rem;text-transform:uppercase;letter-spacing:.5px;">Próximo paso</span>
+                        </div>
+                        <p class="mb-0 text-dark" style="font-size:0.88rem;line-height:1.6;">${d.proximo_paso}</p>
+                    </div>
+                </div>
+            </div>`;
+
+            document.getElementById('modal-ia-footer').style.display = 'flex';
+        })
+        .catch(() => {
+            body.innerHTML = `<div class="p-4"><div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Error al conectar con el servicio de IA.</div></div>`;
+        });
+}
+</script>
+{% endblock %}

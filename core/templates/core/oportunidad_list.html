@@ -1,0 +1,158 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Oportunidades - CRM Comercial{% endblock %}
+{% block page_title %}Oportunidades{% endblock %}
+{% block breadcrumb_item %}Pipeline de Ventas{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-funnel me-2"></i>Oportunidades</h2>
+        <p style="color: #6c757d;">Pipeline de ventas</p>
+    </div>
+    <a href="{% url 'core:oportunidad_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus me-2"></i>Nueva Oportunidad
+    </a>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <input type="text" name="q" class="form-control" placeholder="Buscar cliente, RUT o productos..." value="{{ request.GET.q }}">
+            </div>
+            <div class="col-md-2">
+                <select name="etapa" class="form-select">
+                    <option value="">Todas las etapas</option>
+                    <option value="LEAD" {% if request.GET.etapa == 'LEAD' %}selected{% endif %}>Lead</option>
+                    <option value="CONTACTO" {% if request.GET.etapa == 'CONTACTO' %}selected{% endif %}>Contacto</option>
+                    <option value="CALIFICADO" {% if request.GET.etapa == 'CALIFICADO' %}selected{% endif %}>Calificado</option>
+                    <option value="PROPUESTA" {% if request.GET.etapa == 'PROPUESTA' %}selected{% endif %}>Propuesta</option>
+                    <option value="NEGOCIACION" {% if request.GET.etapa == 'NEGOCIACION' %}selected{% endif %}>Negociación</option>
+                    <option value="CIERRE" {% if request.GET.etapa == 'CIERRE' %}selected{% endif %}>Cierre</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="ABIERTA" {% if request.GET.estado == 'ABIERTA' %}selected{% endif %}>Abierta</option>
+                    <option value="GANADA" {% if request.GET.estado == 'GANADA' %}selected{% endif %}>Ganada</option>
+                    <option value="PERDIDA" {% if request.GET.estado == 'PERDIDA' %}selected{% endif %}>Perdida</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Oportunidades ({{ oportunidades|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if oportunidades %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Etapa</th>
+                            <th>Productos</th>
+                            <th class="text-end">Líneas</th>
+                            <th>Probabilidad</th>
+                            <th>Ejecutivo</th>
+                            <th>Vencimiento</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opp in oportunidades %}
+                            <tr>
+                                <td><strong>{{ opp.cliente.nombre_empresa|truncatewords:2 }}</strong></td>
+                                <td>
+                                    {% if opp.etapa == 'LEAD' %}
+                                        <span class="badge" style="background-color: #808080;">Lead</span>
+                                    {% elif opp.etapa == 'CONTACTO' %}
+                                        <span class="badge" style="background-color: #0275d8;">Contacto</span>
+                                    {% elif opp.etapa == 'CALIFICADO' %}
+                                        <span class="badge" style="background-color: #5bc0de;">Calificado</span>
+                                    {% elif opp.etapa == 'PROPUESTA' %}
+                                        <span class="badge" style="background-color: #5cb85c;">Propuesta</span>
+                                    {% elif opp.etapa == 'NEGOCIACION' %}
+                                        <span class="badge" style="background-color: #f0ad4e;">Negociación</span>
+                                    {% elif opp.etapa == 'CIERRE' %}
+                                        <span class="badge" style="background-color: #ff7043;">Cierre</span>
+                                    {% elif opp.etapa == 'GANADA' %}
+                                        <span class="badge" style="background-color: #51cf66;">Ganada</span>
+                                    {% elif opp.etapa == 'PERDIDA' %}
+                                        <span class="badge" style="background-color: #d32f2f;">Perdida</span>
+                                    {% elif opp.etapa == 'DORMIDA' %}
+                                        <span class="badge" style="background-color: #9e9e9e;">Dormida</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ opp.productos|truncatewords:2|default:"-" }}</td>
+                                <td class="text-end"><strong>{{ opp.lineas|default:"-" }}</strong></td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" style="width: {{ opp.probabilidad }}%;" aria-valuenow="{{ opp.probabilidad }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ opp.probabilidad }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ opp.usuario.get_full_name|default:"-" }}</td>
+                                <td>{{ opp.fecha_cierre_estimada|date:"d/m/Y"|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'core:oportunidad_detail' opp.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'core:oportunidad_update' opp.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay oportunidades registradas</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Clientes Prospectados - CRM{% endblock %}
+{% block page_title %}Clientes Prospectados{% endblock %}
+{% block breadcrumb_item %}Nuevos Clientes{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+        <h2 style="font-size:24px;font-weight:700;color:#333;margin-bottom:5px;">
+            <i class="bi bi-person-plus-fill me-2"></i>Clientes Prospectados
+        </h2>
+        <p style="color:#6c757d;">Clientes nuevos ingresados manualmente por los vendedores — no provienen de la cartera importada.</p>
+    </div>
+    <span class="badge bg-primary fs-6 px-3 py-2">{{ total }} cliente{% if total != 1 %}s{% endif %}</span>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Vendedor</label>
+                <select name="vendedor" class="form-select">
+                    <option value="">Todos los vendedores</option>
+                    {% for v in vendedores %}
+                    <option value="{{ v.pk }}" {% if vendedor_id == v.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ v.get_full_name|default:v.email }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Desde</label>
+                <input type="date" name="desde" class="form-control" value="{{ desde }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Hasta</label>
+                <input type="date" name="hasta" class="form-control" value="{{ hasta }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list me-2"></i>Listado de clientes prospectados ({{ total }})</span>
+        {% if total > 0 %}
+        <small class="text-muted">Ordenados por fecha de ingreso (más recientes primero)</small>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if clientes_nuevos %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>RUT</th>
+                        <th>Empresa</th>
+                        <th>Sector</th>
+                        <th>Estado</th>
+                        <th>Prospectado por</th>
+                        <th>Fecha ingreso</th>
+                        <th>Oportunidades</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes_nuevos %}
+                    <tr>
+                        <td><code>{{ cliente.rut }}</code></td>
+                        <td>
+                            <a href="{% url 'core:cliente_detail' cliente.pk %}">
+                                <strong>{{ cliente.nombre_empresa }}</strong>
+                            </a>
+                        </td>
+                        <td>{{ cliente.sector|default:"—" }}</td>
+                        <td>
+                            {% if cliente.estado == 'ACTIVO' %}
+                                <span class="badge bg-success">Activo</span>
+                            {% elif cliente.estado == 'PROSPECT' %}
+                                <span class="badge bg-info">Prospect</span>
+                            {% elif cliente.estado == 'INACTIVO' %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ cliente.estado }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-person-circle text-primary"></i>
+                                {{ cliente.usuario_asignado.get_full_name|default:cliente.usuario_asignado.email|default:"Sin asignar" }}
+                            </div>
+                        </td>
+                        <td>
+                            <small>{{ cliente.created_at|date:"d/m/Y H:i" }}</small>
+                        </td>
+                        <td>
+                            {% with total_op=cliente.oportunidades.count %}
+                            {% if total_op > 0 %}
+                                <span class="badge bg-success">{{ total_op }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">0</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'core:cliente_detail' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'core:oportunidad_create' %}?cliente={{ cliente.pk }}" class="btn btn-sm btn-outline-success" title="Nueva oportunidad">
+                                    <i class="bi bi-plus-circle"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-person-plus" style="font-size:3rem;color:#dee2e6;"></i>
+            <p class="text-muted mt-3">No hay clientes prospectados aún.</p>
+            <small class="text-muted">Cuando un vendedor cree un cliente manualmente desde el CRM, aparecerá aquí.</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

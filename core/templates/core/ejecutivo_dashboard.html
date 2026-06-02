@@ -1,0 +1,334 @@
+{% extends "core/base.html" %}
+{% block title %}Mi Dashboard - Ejecutivo{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+    <!-- Bienvenida -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info border-start border-5" style="border-color: #E8000D !important; background: linear-gradient(135deg, rgba(232, 0, 13, 0.1) 0%, rgba(184, 0, 0, 0.05) 100%);">
+                <h5 style="color: #E8000D; font-weight: 600;">
+                    <i class="bi bi-person-circle"></i>
+                    Bienvenido, {{ nombre_usuario }}
+                </h5>
+                <p class="mb-0">Aquí puedes ver tus clientes asignados y gestionar tus oportunidades.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row mb-4">
+        <!-- Total Clientes -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #E8000D;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Mis Clientes</p>
+                            <h3 class="mb-0" style="color: #E8000D; font-weight: 700;">{{ total_clientes }}</h3>
+                        </div>
+                        <i class="bi bi-building" style="font-size: 2rem; color: #E8000D; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Oportunidades Abiertas -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #E8000D;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Oportunidades Abiertas</p>
+                            <h3 class="mb-0" style="color: #E8000D; font-weight: 700;">{{ total_oportunidades }}</h3>
+                        </div>
+                        <i class="bi bi-graph-up" style="font-size: 2rem; color: #E8000D; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Líneas -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #E8000D;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Total Líneas</p>
+                            <h3 class="mb-0" style="color: #E8000D; font-weight: 700;">{{ total_lineas }}</h3>
+                        </div>
+                        <i class="bi bi-telephone-fill" style="font-size: 2rem; color: #E8000D; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seguimientos Pendientes -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #B80000;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Tareas Pendientes</p>
+                            <h3 class="mb-0" style="color: #B80000; font-weight: 700;">{{ seguimientos_pendientes|length }}</h3>
+                        </div>
+                        <i class="bi bi-list-check" style="font-size: 2rem; color: #E8000D; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div class="row">
+        <!-- Mis Clientes -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building"></i> Mis Clientes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if clientes %}
+                        <div class="list-group list-group-flush">
+                            {% for cliente in clientes|slice:":5" %}
+                                <a href="{% url 'core:cliente_detail' cliente.pk %}" class="list-group-item list-group-item-action p-3 border-bottom" style="text-decoration: none;">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1" style="color: #2c3e50; font-weight: 600;">{{ cliente.nombre_empresa }}</h6>
+                                            <small class="text-muted">RUT: {{ cliente.rut }}</small>
+                                        </div>
+                                        <span class="badge" style="background-color: #E8000D;">{{ cliente.estado }}</span>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                        {% if clientes|length > 5 %}
+                            <div class="p-3 text-center border-top">
+                                <a href="{% url 'core:cliente_list' %}" class="btn btn-sm" style="background-color: #E8000D; color: white;">
+                                    Ver todos los clientes ({{ clientes|length }})
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
+                            <p class="mt-2 mb-0">No tienes clientes asignados</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Oportunidades Pendientes -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up"></i> Oportunidades Abiertas
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if oportunidades %}
+                        <div class="list-group list-group-flush">
+                            {% for oportunidad in oportunidades|slice:":5" %}
+                                <a href="{% url 'core:oportunidad_detail' oportunidad.pk %}" class="list-group-item list-group-item-action p-3 border-bottom" style="text-decoration: none;">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1" style="color: #2c3e50; font-weight: 600;">{{ oportunidad.cliente.nombre_empresa }}</h6>
+                                            <small class="text-muted">Etapa: {{ oportunidad.get_etapa_display }}</small>
+                                        </div>
+                                        <span class="badge" style="background-color: #E8000D;">
+                                            {{ oportunidad.lineas|default:"-" }} líneas
+                                        </span>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                        {% if oportunidades|length > 5 %}
+                            <div class="p-3 text-center border-top">
+                                <a href="{% url 'core:oportunidad_list' %}" class="btn btn-sm" style="background-color: #E8000D; color: white;">
+                                    Ver todas ({{ oportunidades|length }})
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
+                            <p class="mt-2 mb-0">No hay oportunidades abiertas</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tareas Pendientes -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check"></i> Tareas Pendientes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if seguimientos_pendientes %}
+                        <div class="list-group list-group-flush">
+                            {% for seguimiento in seguimientos_pendientes %}
+                                <div class="list-group-item p-3 border-bottom d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1" style="color: #2c3e50; font-weight: 600;">
+                                            {{ seguimiento.oportunidad.cliente.nombre_empresa }}
+                                        </h6>
+                                        <p class="small text-muted mb-0">{{ seguimiento.descripcion|truncatewords:15 }}</p>
+                                        <small class="text-muted">
+                                            Vence: {{ seguimiento.fecha_vencimiento|date:"d/m/Y" }}
+                                        </small>
+                                    </div>
+                                    <span class="badge" style="background-color: #f0ad4e;">{{ seguimiento.get_prioridad_display }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-check-circle" style="font-size: 2rem; opacity: 0.5; color: #6c757d;"></i>
+                            <p class="mt-2 mb-0">¡No hay tareas pendientes!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos de Líneas -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart-steps me-2"></i>Mis Clientes por Total Líneas</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="lineasClientesChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Distribución de Líneas</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="tiposLineasChart" height="160"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: #E8000D; color: white; border: none;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-3">
+                            <a href="{% url 'core:cliente_list' %}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-building"></i> Ver Mis Clientes
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="{% url 'core:oportunidad_list' %}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-graph-up"></i> Mis Oportunidades
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="{% url 'core:oportunidad_create' %}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-plus-circle"></i> Nueva Oportunidad
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="{% url 'core:llamada_list' %}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-telephone"></i> Mis Gestiones
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+    new Chart(document.getElementById('lineasClientesChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ lineas_clientes_labels|safe }},
+            datasets: [{
+                label: 'Total Líneas',
+                data: {{ lineas_clientes_data|safe }},
+                backgroundColor: '#E8000D',
+                borderColor: '#B80000',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    new Chart(document.getElementById('tiposLineasChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ tipos_lineas_labels|safe }},
+            datasets: [{
+                data: {{ tipos_lineas_data|safe }},
+                backgroundColor: ['#E8000D', '#667eea', '#51cf66'],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, font: { size: 12, weight: 'bold' } }
+                }
+            }
+        }
+    });
+</script>
+
+<style>
+    .card {
+        border-radius: 8px;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .list-group-item-action:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .btn-outline-danger:hover {
+        background-color: #E8000D !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}

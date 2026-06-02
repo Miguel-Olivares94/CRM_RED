@@ -1,0 +1,175 @@
+{% load static %}
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet"/>
+
+<style>
+/* ── Secciones ─────────────────────────────────────────────────────── */
+.form-section {
+    background: #f8faff;
+    border: 1px solid #e0e7ff;
+    border-radius: 10px;
+    padding: 1.25rem 1.25rem 0.75rem;
+    margin-bottom: 1.25rem;
+    animation: slideInUp 0.3s ease both;
+}
+.form-section:nth-child(1) { animation-delay: 0.05s; }
+.form-section:nth-child(2) { animation-delay: 0.10s; }
+.form-section:nth-child(3) { animation-delay: 0.15s; }
+.form-section:nth-child(4) { animation-delay: 0.20s; }
+.form-section:nth-child(5) { animation-delay: 0.25s; }
+.form-section:nth-child(6) { animation-delay: 0.30s; }
+
+.section-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #D63031;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e7ff;
+}
+
+/* ── Labels ────────────────────────────────────────────────────────── */
+.form-label-wrapper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.45rem;
+}
+.form-label-wrapper label, label {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+    font-size: 13.5px;
+    display: block;
+}
+
+/* ── Inputs ────────────────────────────────────────────────────────── */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 2px solid #e0e7ff;
+    padding: 0.62rem 0.85rem;
+    font-size: 13.5px;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    background-color: #fff;
+    font-weight: 500;
+    color: #222;
+}
+.form-control::placeholder { color: #bbb; font-weight: 400; }
+.form-control:focus, .form-select:focus {
+    border-color: #D63031;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(214,48,49,0.10);
+    outline: none;
+}
+.form-control:hover, .form-select:hover { border-color: #FF7F7F; }
+
+textarea.form-control { min-height: 90px; resize: vertical; }
+
+.form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; }
+.form-control.is-valid,   .form-select.is-valid   { border-color: #28a745 !important; }
+
+/* ── Íconos en campos ──────────────────────────────────────────────── */
+.input-icon-wrapper { position: relative; }
+.input-icon {
+    position: absolute; left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: #bbb; font-size: 14px; pointer-events: none; z-index: 2;
+}
+.input-icon-wrapper .form-control { padding-left: 34px; }
+
+/* ── Errores ───────────────────────────────────────────────────────── */
+.field-error {
+    color: #dc3545; font-size: 12px;
+    display: flex; align-items: center;
+    padding: 0.28rem 0.6rem;
+    background-color: #fff5f5;
+    border-left: 3px solid #dc3545;
+    border-radius: 4px;
+    margin-top: 0.35rem;
+}
+
+/* ── Checkbox ──────────────────────────────────────────────────────── */
+.form-check-custom {
+    display: flex; align-items: center;
+    gap: 10px; padding: 0.6rem 1rem;
+    border: 2px solid #e0e7ff; border-radius: 8px;
+    background: #fff; cursor: pointer;
+}
+.form-check-custom input[type="checkbox"] {
+    width: 18px; height: 18px; cursor: pointer; accent-color: #D63031;
+    flex-shrink: 0;
+}
+.form-check-custom label { margin: 0; cursor: pointer; font-weight: 600; font-size: 13.5px; }
+
+/* ── Select2 ───────────────────────────────────────────────────────── */
+.select2-container--bootstrap-5 .select2-selection {
+    border: 2px solid #e0e7ff; border-radius: 8px;
+    background-color: #fff; min-height: 42px; font-size: 13.5px;
+}
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+    border-color: #D63031; box-shadow: 0 0 0 3px rgba(214,48,49,0.10);
+}
+.select2-container--bootstrap-5 .select2-dropdown {
+    border: 2px solid #D63031; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #D63031 !important;
+}
+
+/* ── Botones ───────────────────────────────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, #FF4D4D 0%, #D63031 100%);
+    border: none; font-weight: 600; letter-spacing: 0.4px;
+    border-radius: 8px; padding: 0.75rem 1.5rem;
+    box-shadow: 0 4px 12px rgba(255,77,77,0.30);
+    transition: all 0.25s ease;
+}
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255,77,77,0.45);
+    background: linear-gradient(135deg, #D63031 0%, #C23030 100%);
+}
+.btn-outline-secondary {
+    border: 2px solid #dee2e6; color: #666; font-weight: 600;
+    border-radius: 8px; transition: all 0.2s ease;
+}
+.btn-outline-secondary:hover { border-color: #D63031; color: #D63031; background: transparent; }
+.btn-lg { font-size: 13.5px; }
+
+/* ── Barra de acciones ─────────────────────────────────────────────── */
+.form-actions {
+    background: linear-gradient(135deg, #f5f9ff 0%, #fafbfc 100%);
+    padding: 1.25rem !important;
+    margin: 1.5rem -1rem -1rem -1rem !important;
+    border-radius: 0 0 8px 8px;
+}
+
+/* ── Card ──────────────────────────────────────────────────────────── */
+.card.card-primary {
+    border: none;
+    box-shadow: 0 4px 20px rgba(255,77,77,0.13);
+}
+.card-header-primary { font-weight: 600; letter-spacing: 0.4px; }
+
+/* ── Animación ─────────────────────────────────────────────────────── */
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.card { animation: slideInUp 0.28s ease; }
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .form-actions { flex-direction: column; }
+    .form-actions .btn { width: 100%; }
+}
+
+input[type="range"] { cursor: pointer; }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'core/js/forms_enhanced.js' %}?v=8"></script>

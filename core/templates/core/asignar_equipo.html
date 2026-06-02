@@ -1,0 +1,116 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Asignar Equipo - CRM Comercial{% endblock %}
+{% block page_title %}Asignar Ejecutivos a Supervisores{% endblock %}
+{% block breadcrumb_item %}Asignar Equipo{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show mb-3">
+    <i class="bi bi-check-circle me-2"></i>{{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div class="card card-primary shadow-lg">
+  <div class="card-header card-header-primary d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-people-fill me-2"></i>Gestión de Equipo</span>
+    <span class="badge bg-light text-danger">{{ ejecutivos|length }} ejecutivo{{ ejecutivos|length|pluralize:"s" }}</span>
+  </div>
+  <div class="card-body p-0">
+
+    {% if ejecutivos %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" id="tabla-equipo">
+        <thead>
+          <tr>
+            <th>Ejecutivo / Vendedor</th>
+            <th>Supervisor actual</th>
+            {% if es_admin %}<th style="width:260px;">Asignar a supervisor</th>{% endif %}
+            <th style="width:110px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ejecutivos %}
+          <tr id="fila-{{ row.user.id }}">
+            <td>
+              <div class="fw-600">{{ row.user.get_full_name|default:row.user.username }}</div>
+              <small class="text-muted">{{ row.user.email }}</small>
+            </td>
+            <td>
+              {% if row.supervisor %}
+                <span class="badge" style="background:#e0e7ff;color:#D63031;font-weight:600;">
+                  <i class="bi bi-person-badge me-1"></i>{{ row.supervisor.get_full_name|default:row.supervisor.username }}
+                </span>
+              {% else %}
+                <span class="text-muted fst-italic">Sin asignar</span>
+              {% endif %}
+            </td>
+            {% if es_admin %}
+            <td>
+              <select class="form-select form-select-sm supervisor-sel" data-ej="{{ row.user.id }}" style="font-size:13px;">
+                <option value="">-- Sin supervisor --</option>
+                {% for mgr in managers %}
+                <option value="{{ mgr.id }}"
+                  {% if row.supervisor and row.supervisor.id == mgr.id %}selected{% endif %}>
+                  {{ mgr.get_full_name|default:mgr.username }}
+                </option>
+                {% endfor %}
+              </select>
+            </td>
+            {% endif %}
+            <td>
+              <form method="post" class="asignar-form d-inline" data-ej="{{ row.user.id }}">
+                {% csrf_token %}
+                <input type="hidden" name="ejecutivo_id" value="{{ row.user.id }}">
+                <input type="hidden" name="supervisor_id" class="sup-hidden" value="{% if row.supervisor %}{{ row.supervisor.id }}{% endif %}">
+                <button type="submit" class="btn btn-sm btn-primary">
+                  <i class="bi bi-check-lg me-1"></i>Guardar
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-people" style="font-size:48px;opacity:.3;"></i>
+      <p class="mt-3">No hay ejecutivos para gestionar.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+  .fw-600 { font-weight: 600; }
+  .table thead th { font-size: 12px; }
+  .table td { vertical-align: middle; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Sincronizar el select de supervisor con el hidden input del form
+    document.querySelectorAll('.supervisor-sel').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+            var ejId = this.dataset.ej;
+            var form = document.querySelector('.asignar-form[data-ej="' + ejId + '"]');
+            if (form) form.querySelector('.sup-hidden').value = this.value;
+        });
+    });
+
+    // Feedback visual al guardar (resaltar fila)
+    document.querySelectorAll('.asignar-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var fila = document.getElementById('fila-' + this.dataset.ej);
+            if (fila) fila.style.background = '#f0fdf4';
+        });
+    });
+});
+</script>
+{% endblock %}

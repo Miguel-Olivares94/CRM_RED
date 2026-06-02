@@ -1,0 +1,132 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Comisión {{ comision.periodo }} - CRM Comercial{% endblock %}
+{% block page_title %}Comisión - {{ comision.periodo }}{% endblock %}
+{% block breadcrumb_item %}Detalles Comisión{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-cash-coin me-2"></i>Comisión - {{ comision.periodo }}</h2>
+        <p style="color: #6c757d; margin-bottom: 0;">{{ comision.usuario.get_full_name }}</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Detalles principales -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Detalles de la Comisión
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Usuario:</strong>
+                        <p>{{ comision.usuario.get_full_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Estado:</strong>
+                        <p>
+                            {% if comision.estado == 'CALCULADA' %}
+                                <span class="badge bg-warning">Calculada</span>
+                            {% elif comision.estado == 'APROBADA' %}
+                                <span class="badge bg-info">Aprobada</span>
+                            {% elif comision.estado == 'PAGADA' %}
+                                <span class="badge bg-success">Pagada</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5>Ventas Realizadas</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Líneas Portabilidad:</strong>
+                        <p>{{ comision.lineas_portabilidad_vendidas }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Líneas Nueva:</strong>
+                        <p>{{ comision.lineas_nueva_vendidas }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Líneas M2M:</strong>
+                        <p>{{ comision.lineas_m2m_vendidas }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Monto Total Vendido:</strong>
+                        <p>CLP {{ comision.monto_total_vendido|floatformat:0 }}</p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5>Cálculo de Comisión</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Comisión Calculada:</strong>
+                        <p><strong>CLP {{ comision.comision_calculada|floatformat:0 }}</strong></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Bonificación Aplicada:</strong>
+                        <p>CLP {{ comision.bonificacion_aplicada|floatformat:0 }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Total a Pagar:</strong>
+                        <p style="font-size: 1.5rem;"><strong>CLP {{ comision.total_a_pagar|floatformat:0 }}</strong></p>
+                    </div>
+                    {% if comision.fecha_pago %}
+                        <div class="col-md-6 mb-3">
+                            <strong>Fecha Pago:</strong>
+                            <p>{{ comision.fecha_pago|date:"d/m/Y" }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar me-2"></i>Información
+            </div>
+            <div class="card-body small text-muted">
+                <p>
+                    <strong>Período:</strong><br>
+                    {{ comision.periodo }}
+                </p>
+                <p>
+                    <strong>Fecha Cálculo:</strong><br>
+                    {{ comision.fecha_calculo|date:"d/m/Y H:i" }}
+                </p>
+                <p>
+                    <strong>Creado:</strong><br>
+                    {{ comision.created_at|date:"d/m/Y H:i" }}
+                </p>
+                <p>
+                    <strong>Actualizado:</strong><br>
+                    {{ comision.updated_at|date:"d/m/Y H:i" }}
+                </p>
+            </div>
+        </div>
+
+        {% if comision.meta %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-target me-2"></i>Meta Asociada
+                </div>
+                <div class="card-body small">
+                    <p><strong>Meta:</strong> {{ comision.meta.periodo }}</p>
+                    <p><strong>Comisión Base:</strong> CLP {{ comision.meta.comision_base|floatformat:0 }}</p>
+                    <p><strong>Por Línea:</strong> CLP {{ comision.meta.comision_por_linea|floatformat:2 }}</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

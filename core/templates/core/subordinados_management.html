@@ -1,0 +1,264 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Gestión de Vendedores - CRM Comercial{% endblock %}
+{% block page_title %}Gestión de Vendedores{% endblock %}
+{% block breadcrumb_item %}Vendedores{% endblock %}
+
+{% block content %}
+
+<!-- KPIs del Equipo -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-people" style="font-size: 2.5rem; color: #667eea;"></i>
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px;">Clientes Equipo</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #333; margin: 8px 0;">{{ team_total_clientes }}</div>
+                <small class="text-muted">Asignados al equipo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-star" style="font-size: 2.5rem; color: #ffc107;"></i>
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px;">Oportunidades</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #333; margin: 8px 0;">{{ team_total_oportunidades }}</div>
+                <small class="text-muted">En desarrollo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-telephone" style="font-size: 2.5rem; color: #dc3545;"></i>
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px;">Cantidad de Líneas</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #333; margin: 8px 0;">{{ team_total_lineas }}</div>
+                <small class="text-muted">Líneas activas totales</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle" style="font-size: 2.5rem; color: #28a745;"></i>
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px;">Ventas Ganadas</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #333; margin: 8px 0;">{{ team_oportunidades_ganadas }}</div>
+                <small class="text-muted">Cerradas con éxito</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Vendedores -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-list-check"></i> Vendedores del Equipo ({{ total_subordinados }})
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if subordinados_data %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Vendedor</th>
+                            <th class="text-center">Clientes</th>
+                            <th class="text-center">Oportunidades<br/><small class="text-muted">(Abiertas/Ganadas/Perdidas)</small></th>
+                            <th class="text-center">Cant. Líneas</th>
+                            <th class="text-center">Gestiones</th>
+                            <th class="text-center">Seguimientos</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vendedor in subordinados_data %}
+                        <tr>
+                            <td>
+                                <strong>{{ vendedor.user.get_full_name }}</strong>
+                                <br/>
+                                <small class="text-muted">{{ vendedor.user.email }}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary">{{ vendedor.total_clientes }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ vendedor.total_oportunidades_abiertas }}</span>
+                                <span class="badge bg-success">{{ vendedor.total_oportunidades_ganadas }}</span>
+                                <span class="badge bg-danger">{{ vendedor.total_oportunidades_perdidas }}</span>
+                            </td>
+                            <td class="text-center">
+                                <strong>{{ vendedor.total_lineas }}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-warning">{{ vendedor.llamadas_count }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ vendedor.seguimientos_pendientes|length }}</span>
+                            </td>
+                            <td class="text-center">
+                                <a href="#vendedor-{{ vendedor.user.id }}" 
+                                   class="btn btn-sm btn-outline-primary" title="Ver detalle del vendedor">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'core:cliente_list' %}?usuario={{ vendedor.user.id }}" 
+                                   class="btn btn-sm btn-outline-secondary" title="Ver clientes">
+                                    <i class="bi bi-people"></i>
+                                </a>
+                                <a href="{% url 'core:oportunidad_list' %}?usuario={{ vendedor.user.id }}" 
+                                   class="btn btn-sm btn-outline-info" title="Ver oportunidades">
+                                    <i class="bi bi-funnel"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No tienes vendedores asignados aún.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Detalles por Vendedor -->
+{% for vendedor in subordinados_data %}
+<div class="card mb-4" id="vendedor-{{ vendedor.user.id }}">
+    <div class="card-header" style="background:#B80000;">
+        <h5 class="mb-0" style="color:white;">
+            <i class="bi bi-person-badge"></i> Detalle: {{ vendedor.user.get_full_name }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <!-- Métricas principales -->
+            <div class="col-md-3">
+                <div class="stat-box text-center p-3 border-end">
+                    <div class="stat-label text-muted">Clientes</div>
+                    <div class="stat-value">{{ vendedor.total_clientes }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box text-center p-3 border-end">
+                    <div class="stat-label text-muted">Oportunidades Activas</div>
+                    <div class="stat-value text-info">{{ vendedor.total_oportunidades_abiertas }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box text-center p-3 border-end">
+                    <div class="stat-label text-muted">Cant. Líneas</div>
+                    <div class="stat-value text-info">{{ vendedor.total_lineas }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box text-center p-3">
+                    <div class="stat-label text-muted">Ventas Ganadas</div>
+                    <div class="stat-value text-success">{{ vendedor.total_oportunidades_ganadas }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Oportunidades por etapa -->
+        {% if vendedor.oportunidades_por_etapa %}
+        <div class="mb-4">
+            <h6 class="mb-3">Oportunidades por Etapa</h6>
+            <div class="row">
+                {% for etapa in vendedor.oportunidades_por_etapa %}
+                <div class="col-md-4 col-lg-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-grow-1">
+                            <small class="text-muted">{{ etapa.etapa }}</small>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <div class="ms-2">
+                            <strong>{{ etapa.count }}</strong>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Últimas oportunidades -->
+        {% if vendedor.ultimas_oportunidades %}
+        <div class="mb-4">
+            <h6 class="mb-3">Últimas Oportunidades</h6>
+            <div class="list-group list-group-sm">
+                {% for opp in vendedor.ultimas_oportunidades %}
+                <a href="{% url 'core:oportunidad_detail' opp.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-500">{{ opp.cliente.nombre_empresa }}</div>
+                        <small class="text-muted">{{ opp.descripcion|truncatewords:10 }}</small>
+                    </div>
+                    <span class="badge bg-info rounded-pill">{{ opp.etapa }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Seguimientos pendientes -->
+        {% if vendedor.seguimientos_pendientes %}
+        <div>
+            <h6 class="mb-3">Seguimientos Pendientes</h6>
+            <div class="list-group list-group-sm">
+                {% for seg in vendedor.seguimientos_pendientes %}
+                <div class="list-group-item d-flex justify-content-between align-items-start">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-500">{{ seg.oportunidad.cliente.nombre_empresa }}</div>
+                        <small class="text-muted">Vence: {{ seg.fecha_vencimiento|date:"d/m/Y" }}</small>
+                    </div>
+                    <span class="badge bg-warning rounded-pill">{{ seg.tipo }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<style>
+.stat-box {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+}
+
+.list-group-sm .list-group-item {
+    padding: 0.75rem 1rem;
+}
+
+.fw-500 {
+    font-weight: 500;
+}
+</style>
+
+{% endblock %}

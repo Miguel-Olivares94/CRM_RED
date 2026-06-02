@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Metas de Ventas - CRM Comercial{% endblock %}
+{% block page_title %}Metas{% endblock %}
+{% block breadcrumb_item %}Metas de Ventas{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-target me-2"></i>Metas de Ventas</h2>
+        <p style="color: #6c757d;">Configuración de metas y comisiones</p>
+    </div>
+    <a href="{% url 'core:meta_ventas_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus me-2"></i>Nueva Meta
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="periodo" class="form-control" placeholder="Buscar por período (ej: 2024-01)" value="{{ request.GET.periodo }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Metas de Ventas ({{ metas|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if metas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Período</th>
+                            <th>Usuario</th>
+                            <th>Meta Portabilidad</th>
+                            <th>Meta Nueva</th>
+                            <th>Meta M2M</th>
+                            <th>Comisión Base</th>
+                            <th>Por Línea</th>
+                            <th>Factor Aceleración</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for meta in metas %}
+                            <tr>
+                                <td><strong>{{ meta.periodo }}</strong></td>
+                                <td>{{ meta.usuario.get_full_name }}</td>
+                                <td>{{ meta.lineas_portabilidad }}</td>
+                                <td>{{ meta.lineas_nueva }}</td>
+                                <td>{{ meta.lineas_m2m }}</td>
+                                <td>CLP {{ meta.comision_base|floatformat:0 }}</td>
+                                <td>CLP {{ meta.comision_por_linea|floatformat:0 }}</td>
+                                <td>{{ meta.factor_aceleracion }}x</td>
+                                <td>
+                                    <a href="{% url 'core:meta_ventas_update' meta.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay metas de ventas registradas</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

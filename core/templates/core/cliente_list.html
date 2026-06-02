@@ -1,0 +1,221 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Clientes - CRM Comercial{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+{% block breadcrumb_item %}Listado de Clientes{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-people me-2"></i>Clientes</h2>
+        <p style="color: #6c757d;">Gestión de empresas clientes</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'core:cliente_import' %}" class="btn btn-outline-success">
+            <i class="bi bi-upload me-2"></i>Importar Excel
+        </a>
+        <a href="{% url 'core:cliente_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus me-2"></i>Nuevo Cliente
+        </a>
+    </div>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-funnel me-2"></i>Filtros
+    </div>
+    <div class="card-body">
+        <form method="get">
+            <!-- Fila 1 -->
+            <div class="row g-2 align-items-end mb-2">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control" placeholder="Nombre, RUT o sector..." value="{{ request.GET.q }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold mb-1">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="ACTIVO"   {% if request.GET.estado == 'ACTIVO'   %}selected{% endif %}>Activo</option>
+                        <option value="INACTIVO" {% if request.GET.estado == 'INACTIVO' %}selected{% endif %}>Inactivo</option>
+                        <option value="DORMIDO"  {% if request.GET.estado == 'DORMIDO'  %}selected{% endif %}>Dormido</option>
+                        <option value="PROSPECT" {% if request.GET.estado == 'PROSPECT' %}selected{% endif %}>Prospect</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold mb-1">Ordenar por</label>
+                    <select name="orden" class="form-select">
+                        <option value="lineas_desc" {% if request.GET.orden == 'lineas_desc' or not request.GET.orden %}selected{% endif %}>Líneas: Mayor → Menor</option>
+                        <option value="lineas_asc"  {% if request.GET.orden == 'lineas_asc'  %}selected{% endif %}>Líneas: Menor → Mayor</option>
+                        <option value="nombre"      {% if request.GET.orden == 'nombre'      %}selected{% endif %}>Nombre A–Z</option>
+                        <option value="reciente"    {% if request.GET.orden == 'reciente'    %}selected{% endif %}>Más recientes</option>
+                        <option value="antiguo"     {% if request.GET.orden == 'antiguo'     %}selected{% endif %}>Más antiguos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold mb-1">Mín. líneas</label>
+                    <input type="number" name="min_lineas" class="form-control" placeholder="Ej: 10" min="0" value="{{ request.GET.min_lineas }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small fw-semibold mb-1">Con líneas</label>
+                    <select name="con_lineas" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="1" {% if request.GET.con_lineas == '1' %}selected{% endif %}>Solo con</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-grow-1" title="Filtrar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <a href="{% url 'core:cliente_list' %}" class="btn btn-outline-secondary" title="Limpiar">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Fila 2: Segmento + Supervisor + Ejecutivo -->
+            <div class="row g-2 align-items-end">
+                {% if segmentos %}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Segmento</label>
+                    <select name="segmento" class="form-select">
+                        <option value="">Todos los segmentos</option>
+                        {% for seg in segmentos %}
+                        <option value="{{ seg }}" {% if request.GET.segmento == seg %}selected{% endif %}>{{ seg }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                {% if supervisores %}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Supervisor</label>
+                    <select name="supervisor" class="form-select">
+                        <option value="">Todos los supervisores</option>
+                        {% for m in supervisores %}
+                        <option value="{{ m.id }}" {% if request.GET.supervisor == m.id|stringformat:"s" %}selected{% endif %}>
+                            {{ m.get_full_name|default:m.email }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                {% if ejecutivos %}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Ejecutivo</label>
+                    <select name="ejecutivo" class="form-select">
+                        <option value="">Todos los ejecutivos</option>
+                        {% for u in ejecutivos %}
+                        <option value="{{ u.id }}" {% if request.GET.ejecutivo == u.id|stringformat:"s" %}selected{% endif %}>
+                            {{ u.get_full_name|default:u.email }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Listado de Clientes ({{ clientes|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if clientes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>RUT</th>
+                            <th>Empresa</th>
+                            <th>Sector</th>
+                            <th class="text-center">Líneas</th>
+                            <th>Ejecutivo</th>
+                            <th>Estado</th>
+                            <th>Fecha Registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in clientes %}
+                            <tr>
+                                <td><strong>{{ cliente.rut }}</strong></td>
+                                <td>{{ cliente.nombre_empresa }}</td>
+                                <td>{{ cliente.sector|default:"-" }}</td>
+                                <td class="text-center">
+                                    {% if cliente.q_total_lineas %}
+                                        <span class="badge rounded-pill" style="background:#E8000D;font-size:12px;padding:5px 10px;">
+                                            <i class="bi bi-sim me-1"></i>{{ cliente.q_total_lineas }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cliente.usuario_asignado.get_full_name|default:"-" }}</td>
+                                <td>
+                                    {% if cliente.estado == 'ACTIVO' %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% elif cliente.estado == 'INACTIVO' %}
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    {% elif cliente.estado == 'DORMIDO' %}
+                                        <span class="badge bg-secondary">Dormido</span>
+                                    {% elif cliente.estado == 'PROSPECT' %}
+                                        <span class="badge bg-info">Prospect</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cliente.fecha_registro|date:"d/m/Y"|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'core:cliente_detail' cliente.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'core:cliente_update' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET.q|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET.q|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET.q|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.q|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay clientes registrados</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

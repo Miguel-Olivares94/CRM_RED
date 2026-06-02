@@ -1,0 +1,450 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ oportunidad.cliente.nombre_empresa }} - {{ oportunidad.etapa }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ oportunidad.cliente.nombre_empresa }}{% endblock %}
+{% block breadcrumb_item %}Detalles Oportunidad{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-funnel me-2"></i>{{ oportunidad.cliente.nombre_empresa }}</h2>
+        <p style="color: #6c757d;">Oportunidad en {{ oportunidad.get_etapa_display }}</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        {% if oportunidad.creado_por %}
+        <small class="text-muted me-2">
+            <i class="bi bi-person-badge me-1"></i>Asignado por: <strong>{{ oportunidad.creado_por.get_full_name|default:oportunidad.creado_por.email }}</strong>
+        </small>
+        {% endif %}
+        <!-- Botón Asistente IA (todos) -->
+        <button id="btn-estrategia" class="btn btn-primary" onclick="cargarEstrategia()">
+            <i class="bi bi-stars me-1"></i>Asistente IA
+        </button>
+        <!-- Botón Auditoría (solo admin/manager) -->
+        {% if user_role == 'admin' or user_role == 'superadmin' or user_role == 'manager' %}
+        <button id="btn-auditoria" class="btn btn-outline-secondary" onclick="cargarAuditoria()">
+            <i class="bi bi-shield-check me-1"></i>Auditar
+        </button>
+        {% endif %}
+        <a href="{% url 'core:oportunidad_update' oportunidad.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-2"></i>Editar
+        </a>
+        {% if user_role == 'admin' or user_role == 'superadmin' %}
+        <a href="{% url 'core:oportunidad_delete' oportunidad.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash me-2"></i>Eliminar
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Detalles principales -->
+    <div class="col-lg-8">
+        <!-- Información general -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Detalles de la Oportunidad
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Etapa:</strong>
+                        <p>
+                            {% if oportunidad.etapa == 'LEAD' %}
+                                <span class="badge" style="background-color: #808080;">Lead</span>
+                            {% elif oportunidad.etapa == 'CONTACTO' %}
+                                <span class="badge" style="background-color: #0275d8;">Contacto</span>
+                            {% elif oportunidad.etapa == 'CALIFICADO' %}
+                                <span class="badge" style="background-color: #5bc0de;">Calificado</span>
+                            {% elif oportunidad.etapa == 'PROPUESTA' %}
+                                <span class="badge" style="background-color: #5cb85c;">Propuesta</span>
+                            {% elif oportunidad.etapa == 'NEGOCIACION' %}
+                                <span class="badge" style="background-color: #f0ad4e;">Negociación</span>
+                            {% elif oportunidad.etapa == 'CIERRE' %}
+                                <span class="badge" style="background-color: #ff7043;">Cierre</span>
+                            {% elif oportunidad.etapa == 'GANADA' %}
+                                <span class="badge" style="background-color: #51cf66;">Ganada</span>
+                            {% elif oportunidad.etapa == 'PERDIDA' %}
+                                <span class="badge" style="background-color: #d32f2f;">Perdida</span>
+                            {% elif oportunidad.etapa == 'DORMIDA' %}
+                                <span class="badge" style="background-color: #9e9e9e;">Dormida</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Estado:</strong>
+                        <p>
+                            {% if oportunidad.estado == 'ABIERTA' %}
+                                <span class="badge bg-success">Abierta</span>
+                            {% elif oportunidad.estado == 'GANADA' %}
+                                <span class="badge bg-primary">Ganada</span>
+                            {% elif oportunidad.estado == 'PERDIDA' %}
+                                <span class="badge bg-danger">Perdida</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Líneas:</strong>
+                        <p><strong>{{ oportunidad.lineas|default:"-" }}</strong></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Probabilidad:</strong>
+                        <p>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ oportunidad.probabilidad }}%;" aria-valuenow="{{ oportunidad.probabilidad }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ oportunidad.probabilidad }}%
+                                </div>
+                            </div>
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Líneas:</strong>
+                        <p>{{ oportunidad.lineas }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ejecutivo:</strong>
+                        <p>{{ oportunidad.usuario.get_full_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Productos:</strong>
+                        <p>{{ oportunidad.productos|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Comisión Estimada:</strong>
+                        <p>CLP {{ oportunidad.comision_estimada|floatformat:0|default:"0" }}</p>
+                    </div>
+                </div>
+
+                {% if oportunidad.observaciones %}
+                    <div class="mt-3 pt-3 border-top">
+                        <strong>Observaciones:</strong>
+                        <p class="text-muted">{{ oportunidad.observaciones }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Gestiones -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-telephone me-2"></i>Gestiones ({{ llamadas|length }})</span>
+                <a href="{% url 'core:llamada_create' %}?oportunidad={{ oportunidad.pk }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Registrar
+                </a>
+            </div>
+            <div class="card-body">
+                {% if llamadas %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Contacto</th>
+                                    <th>Resultado</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for llamada in llamadas %}
+                                    <tr>
+                                        <td>{{ llamada.fecha_hora|date:"d/m/Y H:i" }}</td>
+                                        <td>{{ llamada.get_tipo_display }}</td>
+                                        <td>{{ llamada.contacto.nombre|default:"-" }}</td>
+                                        <td>
+                                            {% if llamada.resultado == 'EXITOSA' %}
+                                                <span class="badge bg-success">Exitosa</span>
+                                            {% elif llamada.resultado == 'FALLIDA' %}
+                                                <span class="badge bg-danger">Fallida</span>
+                                            {% elif llamada.resultado == 'SIN_RESPUESTA' %}
+                                                <span class="badge bg-warning">Sin respuesta</span>
+                                            {% elif llamada.resultado == 'PENDIENTE' %}
+                                                <span class="badge bg-secondary">Pendiente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ llamada.nota_ejecutiva|truncatewords:5|default:"-" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">No hay gestiones registradas</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Seguimientos -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check me-2"></i>Seguimientos ({{ seguimientos|length }})</span>
+                <a href="{% url 'core:seguimiento_create' %}?oportunidad={{ oportunidad.pk }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Nuevo
+                </a>
+            </div>
+            <div class="card-body">
+                {% if seguimientos %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Prioridad</th>
+                                    <th>Estado</th>
+                                    <th>Vencimiento</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for seg in seguimientos %}
+                                    <tr>
+                                        <td>{{ seg.get_tipo_display }}</td>
+                                        <td>
+                                            {% if seg.prioridad == 'BAJA' %}
+                                                <span class="badge" style="background-color: #51cf66;">Baja</span>
+                                            {% elif seg.prioridad == 'MEDIA' %}
+                                                <span class="badge" style="background-color: #5cb85c;">Media</span>
+                                            {% elif seg.prioridad == 'ALTA' %}
+                                                <span class="badge" style="background-color: #f0ad4e;">Alta</span>
+                                            {% elif seg.prioridad == 'CRITICA' %}
+                                                <span class="badge" style="background-color: #d32f2f;">Crítica</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if seg.estado == 'PENDIENTE' %}
+                                                <span class="badge bg-warning">Pendiente</span>
+                                            {% elif seg.estado == 'EN_PROGRESO' %}
+                                                <span class="badge bg-info">En progreso</span>
+                                            {% elif seg.estado == 'COMPLETADA' %}
+                                                <span class="badge bg-success">Completada</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ seg.fecha_vencimiento|date:"d/m/Y"|default:"-" }}</td>
+                                        <td>{{ seg.descripcion|truncatewords:5 }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">No hay seguimientos</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Estado de Alerta -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-exclamation-triangle me-2"></i>Estado de Alerta
+            </div>
+            <div class="card-body text-center">
+                {% if oportunidad.estado_alerta == 'AL_DIA' %}
+                    <div style="font-size: 3rem; color: #51cf66;">✓</div>
+                    <p class="fw-bold text-success">Al día</p>
+                {% elif oportunidad.estado_alerta == 'ATENCION' %}
+                    <div style="font-size: 3rem; color: #5cb85c;">!</div>
+                    <p class="fw-bold text-info">Requiere atención</p>
+                {% elif oportunidad.estado_alerta == 'EN_RIESGO' %}
+                    <div style="font-size: 3rem; color: #f0ad4e;">⚠</div>
+                    <p class="fw-bold" style="color: #f0ad4e;">En riesgo</p>
+                {% elif oportunidad.estado_alerta == 'RIESGO_ALTO' %}
+                    <div style="font-size: 3rem; color: #ff7043;">⚠⚠</div>
+                    <p class="fw-bold" style="color: #ff7043;">Riesgo alto</p>
+                {% elif oportunidad.estado_alerta == 'DORMIDA' %}
+                    <div style="font-size: 3rem; color: #d32f2f;">✕</div>
+                    <p class="fw-bold text-danger">Dormida</p>
+                {% else %}
+                    <p class="text-muted">Sin contacto</p>
+                {% endif %}
+                
+                {% if oportunidad.dias_sin_contacto %}
+                    <hr>
+                    <p class="text-muted"><strong>Días sin contacto:</strong> {{ oportunidad.dias_sin_contacto }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Fechas Importantes -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-calendar me-2"></i>Fechas Importantes
+            </div>
+            <div class="card-body small">
+                <p>
+                    <strong>Creación:</strong><br>
+                    <span class="text-muted">{{ oportunidad.fecha_creacion|date:"d/m/Y H:i" }}</span>
+                </p>
+                <p>
+                    <strong>Último contacto:</strong><br>
+                    <span class="text-muted">{{ oportunidad.fecha_ultimo_contacto|date:"d/m/Y H:i"|default:"Sin registro" }}</span>
+                </p>
+                <p>
+                    <strong>Próximo contacto:</strong><br>
+                    <span class="text-muted">{{ oportunidad.proximo_contacto|date:"d/m/Y"|default:"No programado" }}</span>
+                </p>
+                <p>
+                    <strong>Cierre estimado:</strong><br>
+                    <span class="text-muted">{{ oportunidad.fecha_cierre_estimada|date:"d/m/Y"|default:"No definido" }}</span>
+                </p>
+                {% if oportunidad.fecha_cierre_real %}
+                    <p>
+                        <strong>Cierre real:</strong><br>
+                        <span class="text-muted">{{ oportunidad.fecha_cierre_real|date:"d/m/Y" }}</span>
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Cliente -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-building me-2"></i>Cliente
+            </div>
+            <div class="card-body">
+                <p>
+                    <a href="{% url 'core:cliente_detail' oportunidad.cliente.pk %}" class="btn btn-sm btn-outline-primary">
+                        {{ oportunidad.cliente.nombre_empresa }}
+                    </a>
+                </p>
+                <p class="text-muted"><strong>RUT:</strong> {{ oportunidad.cliente.rut }}</p>
+            </div>
+        </div>
+
+        <!-- Auditoría -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-clock me-2"></i>Auditoría
+            </div>
+            <div class="card-body small text-muted">
+                <p><strong>Creado:</strong><br>{{ oportunidad.created_at|date:"d/m/Y H:i" }}</p>
+                <p><strong>Actualizado:</strong><br>{{ oportunidad.updated_at|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+
+        <!-- Panel Asistente IA (Estrategia) -->
+        <div id="panel-estrategia" class="card mt-3" style="display:none;">
+            <div class="card-header d-flex align-items-center justify-content-between" style="background:#E8000D;color:white;">
+                <span><i class="bi bi-stars me-2"></i>Asistente IA — Estrategia</span>
+                <button class="btn btn-sm btn-light py-0" onclick="document.getElementById('panel-estrategia').style.display='none'">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="body-estrategia" class="card-body small">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                    <p class="mt-2 text-muted">Analizando historial...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Auditoría IA (Admin) -->
+        <div id="panel-auditoria" class="card mt-3" style="display:none;">
+            <div class="card-header d-flex align-items-center justify-content-between" style="background:#B80000;color:white;">
+                <span><i class="bi bi-shield-check me-2"></i>Auditoría IA</span>
+                <button class="btn btn-sm btn-light py-0" onclick="document.getElementById('panel-auditoria').style.display='none'">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="body-auditoria" class="card-body small">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                    <p class="mt-2 text-muted">Auditando oportunidad...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const OPP_ID = {{ oportunidad.pk }};
+
+function cargarEstrategia() {
+    const panel = document.getElementById('panel-estrategia');
+    const body  = document.getElementById('body-estrategia');
+    const btn   = document.getElementById('btn-estrategia');
+
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    body.innerHTML = `<div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+        <p class="mt-2 text-muted mb-0">Analizando historial...</p>
+    </div>`;
+    btn.disabled = true;
+
+    fetch(`/api/v1/ventas/sugerir-estrategia/${OPP_ID}/`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { body.innerHTML = `<p class="text-danger">${d.error}</p>`; return; }
+            const objeciones = (d.objeciones_probables || [])
+                .map(o => `<li class="mb-1">${o}</li>`).join('');
+            body.innerHTML = `
+                <div class="mb-3">
+                    <p class="fw-bold mb-1" style="color:#E8000D;"><i class="bi bi-chat-quote me-1"></i>Script sugerido</p>
+                    <div class="p-2 rounded" style="background:#FFF0F0;font-style:italic;border-left:3px solid #E8000D;">
+                        ${d.script_sugerido}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <p class="fw-bold mb-1" style="color:#B80000;"><i class="bi bi-shield-exclamation me-1"></i>Objeciones probables</p>
+                    <ul class="mb-0 ps-3">${objeciones || '<li class="text-muted">Ninguna identificada</li>'}</ul>
+                </div>
+                <div>
+                    <p class="fw-bold mb-1" style="color:#E8000D;"><i class="bi bi-arrow-right-circle me-1"></i>Próximo paso</p>
+                    <div class="p-2 rounded border" style="background:#fff;">${d.proximo_paso_recomendado}</div>
+                </div>`;
+        })
+        .catch(() => { body.innerHTML = '<p class="text-danger">Error al conectar con el servicio de IA.</p>'; })
+        .finally(() => { btn.disabled = false; });
+}
+
+function cargarAuditoria() {
+    const panel = document.getElementById('panel-auditoria');
+    const body  = document.getElementById('body-auditoria');
+    const btn   = document.getElementById('btn-auditoria');
+    if (!btn) return;
+
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    body.innerHTML = `<div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+        <p class="mt-2 text-muted mb-0">Auditando oportunidad...</p>
+    </div>`;
+    btn.disabled = true;
+
+    fetch(`/api/v1/admin/auditar-oportunidad/${OPP_ID}/`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { body.innerHTML = `<p class="text-danger">${d.error}</p>`; return; }
+            const pct   = d.probabilidad_exito || 0;
+            const color = pct >= 60 ? '#51cf66' : pct >= 35 ? '#f0ad4e' : '#E8000D';
+            const alertas = (d.alertas_riesgo || [])
+                .map(a => `<li class="mb-1 text-danger"><i class="bi bi-exclamation-circle me-1"></i>${a}</li>`).join('');
+            const cuellos = (d.cuellos_de_botella || [])
+                .map(c => `<li class="mb-1"><i class="bi bi-hourglass-split me-1 text-warning"></i>${c}</li>`).join('');
+            body.innerHTML = `
+                <div class="mb-3 text-center">
+                    <p class="fw-bold mb-1">Probabilidad de éxito (IA)</p>
+                    <div class="progress mb-1" style="height:18px;">
+                        <div class="progress-bar fw-bold" style="width:${pct}%;background:${color};">${pct}%</div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <p class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1 text-danger"></i>Alertas de riesgo</p>
+                    <ul class="mb-0 ps-3">${alertas || '<li class="text-muted">Sin alertas</li>'}</ul>
+                </div>
+                <div>
+                    <p class="fw-bold mb-1"><i class="bi bi-hourglass-split me-1 text-warning"></i>Cuellos de botella</p>
+                    <ul class="mb-0 ps-3">${cuellos || '<li class="text-muted">Sin cuellos de botella</li>'}</ul>
+                </div>`;
+        })
+        .catch(() => { body.innerHTML = '<p class="text-danger">Error al conectar con el servicio de IA.</p>'; })
+        .finally(() => { btn.disabled = false; });
+}
+</script>
+{% endblock %}

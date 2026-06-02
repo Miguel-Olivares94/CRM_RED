@@ -1,0 +1,309 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - CRM Gestión Comercial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f9;
+        }
+
+        /* ── Panel izquierdo ── */
+        .brand-panel {
+            width: 50%;
+            background: #E8000D;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 50px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 320px; height: 320px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
+        }
+
+        .brand-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: -60px;
+            width: 260px; height: 260px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .brand-logo {
+            width: 90px; height: 90px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 32px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .brand-logo i { font-size: 44px; color: white; }
+
+        .brand-panel h2 {
+            color: white;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .brand-panel p {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.85rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.7;
+        }
+
+        .brand-divider {
+            width: 50px; height: 3px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 2px;
+            margin: 28px auto;
+        }
+
+        .brand-features {
+            list-style: none;
+            padding: 0; margin: 0;
+            width: 100%; max-width: 280px;
+        }
+
+        .brand-features li {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.82rem;
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand-features li:last-child { border-bottom: none; }
+
+        .brand-features li i {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            flex-shrink: 0;
+        }
+
+        /* ── Panel derecho (formulario) ── */
+        .form-panel {
+            width: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 50px;
+            background: white;
+        }
+
+        .form-inner { width: 100%; max-width: 380px; }
+
+        .form-inner h3 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+
+        .form-inner .subtitle {
+            color: #8a8fa0;
+            font-size: 0.88rem;
+            margin-bottom: 36px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #444;
+            margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .form-label i { color: #E8000D; font-size: 14px; }
+
+        .form-control {
+            border: 1.5px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.92rem;
+            background: #fafafa;
+            transition: all 0.25s;
+        }
+
+        .form-control:focus {
+            border-color: #E8000D;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(232,0,13,0.08);
+            outline: none;
+        }
+
+        .form-control::placeholder { color: #c0c5d0; }
+
+        .btn-login {
+            background: #E8000D;
+            border: none;
+            border-radius: 10px;
+            padding: 13px;
+            width: 100%;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: white;
+            margin-top: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 16px rgba(232,0,13,0.25);
+        }
+
+        .btn-login:hover {
+            background: #c5000b;
+            box-shadow: 0 6px 20px rgba(232,0,13,0.35);
+            transform: translateY(-1px);
+            color: white;
+        }
+
+        .btn-login:active { transform: translateY(0); }
+
+        .error-message {
+            background: #fff0f0;
+            color: #b00008;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 22px;
+            border-left: 4px solid #E8000D;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .field-error {
+            color: #E8000D;
+            font-size: 0.78rem;
+            margin-top: 5px;
+            display: flex; align-items: center; gap: 4px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 36px;
+            color: #b0b5c0;
+            font-size: 0.75rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .brand-panel { width: 100%; padding: 40px 30px; min-height: auto; }
+            .brand-panel::before, .brand-panel::after { display: none; }
+            .brand-features { display: none; }
+            .brand-divider { display: none; }
+            .form-panel { width: 100%; padding: 40px 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Panel izquierdo: Branding -->
+    <div class="brand-panel">
+        <div class="brand-logo">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <h2>CRM GESTIÓN</h2>
+        <p>Plataforma de Ventas y Gestión Comercial</p>
+        <div class="brand-divider"></div>
+        <ul class="brand-features">
+            <li><i class="bi bi-people-fill"></i> Gestión de clientes y contactos</li>
+            <li><i class="bi bi-bar-chart-fill"></i> Pipeline de oportunidades</li>
+            <li><i class="bi bi-telephone-fill"></i> Seguimiento de gestiones</li>
+            <li><i class="bi bi-shield-lock-fill"></i> Acceso seguro por roles</li>
+        </ul>
+    </div>
+
+    <!-- Panel derecho: Formulario -->
+    <div class="form-panel">
+        <div class="form-inner">
+            <h3>Bienvenido</h3>
+            <p class="subtitle">Ingresa tus credenciales para continuar</p>
+
+            {% if form.non_field_errors %}
+                <div class="error-message">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div>
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="id_email" class="form-label">
+                        <i class="bi bi-envelope-fill"></i> Correo Electrónico
+                    </label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="field-error">
+                            <i class="bi bi-x-circle"></i>
+                            {% for error in form.email.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="id_password" class="form-label">
+                        <i class="bi bi-lock-fill"></i> Contraseña
+                    </label>
+                    {{ form.password }}
+                    {% if form.password.errors %}
+                        <div class="field-error">
+                            <i class="bi bi-x-circle"></i>
+                            {% for error in form.password.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-login">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="login-footer">
+                © 2026 CRM Gestión Comercial · Todos los derechos reservados
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

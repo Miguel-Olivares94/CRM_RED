@@ -1,0 +1,282 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Clientes{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x:hidden;">
+  <div class="col-12 col-lg-10 col-xl-9">
+    <div class="card card-primary shadow-lg">
+      <div class="card-header card-header-primary d-flex align-items-center">
+        <i class="bi bi-building-add me-2"></i>
+        <span>{{ titulo }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+              <div><strong>Errores:</strong>{% for e in form.non_field_errors %}<div class="mt-1">{{ e }}</div>{% endfor %}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          <!-- ── IDENTIFICACIÓN ─────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-fingerprint me-2"></i>Identificación</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-7">
+                <div class="form-label-wrapper">{{ form.rut.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.rut }}
+                {% if form.rut.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.rut.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-5">
+                <div class="form-label-wrapper">{{ form.nombre_empresa.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.nombre_empresa }}
+                {% if form.nombre_empresa.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.nombre_empresa.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── CLASIFICACIÓN ─────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-tags me-2"></i>Clasificación</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.estado.label_tag }}</div>
+                {{ form.estado }}
+                {% if form.estado.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.estado.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.usuario_asignado.label_tag }}</div>
+                {{ form.usuario_asignado }}
+                {% if form.usuario_asignado.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.usuario_asignado.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── UBICACIÓN ─────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-geo-alt me-2"></i>Ubicación</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.region.label_tag }}</div>
+                {{ form.region }}
+                {% if form.region.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.region.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.provincia.label_tag }}</div>
+                {{ form.provincia }}
+                <small class="text-muted" style="font-size:11.5px;"><i class="bi bi-info-circle me-1"></i>Se completa automáticamente al seleccionar la comuna.</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── CARTERA CLARO ──────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-briefcase me-2"></i>Cartera</div>
+            <div class="row g-3">
+
+              <!-- Personas CLARO -->
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">
+                  <label><i class="bi bi-person-badge me-1 text-danger"></i>Supervisor
+                    {% if es_manager %}<span class="badge ms-2" style="background:#e0e7ff;color:#D63031;font-size:10px;font-weight:700;">Bloqueado</span>{% endif %}
+                  </label>
+                </div>
+                {{ form.supervisor }}
+                {% if form.supervisor.errors %}<div class="field-error">{{ form.supervisor.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">
+                  <label><i class="bi bi-person-check me-1 text-danger"></i>Ejecutivo de Ventas
+                    {% if es_ejecutivo %}<span class="badge ms-2" style="background:#e0e7ff;color:#D63031;font-size:10px;font-weight:700;">Bloqueado</span>{% endif %}
+                  </label>
+                </div>
+                {{ form.edv }}
+                {% if form.edv.errors %}<div class="field-error">{{ form.edv.errors.0 }}</div>{% endif %}
+              </div>
+
+              <!-- Segmentación -->
+              <div class="col-6 col-sm-4">
+                <div class="form-label-wrapper">{{ form.segmento.label_tag }}</div>
+                {{ form.segmento }}
+                {% if form.segmento.errors %}<div class="field-error">{{ form.segmento.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="form-label-wrapper">{{ form.subrango.label_tag }}</div>
+                {{ form.subrango }}
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="form-label-wrapper">{{ form.subgerencia.label_tag }}</div>
+                {{ form.subgerencia }}
+              </div>
+
+              <!-- Líneas y servicios -->
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.q_total_lineas.label_tag }}</div>
+                {{ form.q_total_lineas }}
+              </div>
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.bam.label_tag }}</div>
+                {{ form.bam }}
+              </div>
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.m2m.label_tag }}</div>
+                {{ form.m2m }}
+              </div>
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.voz.label_tag }}</div>
+                {{ form.voz }}
+              </div>
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.fijo.label_tag }}</div>
+                {{ form.fijo }}
+              </div>
+              <div class="col-4 col-sm-3">
+                <div class="form-label-wrapper">{{ form.movil.label_tag }}</div>
+                {{ form.movil }}
+              </div>
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.fijo_movil.label_tag }}</div>
+                {{ form.fijo_movil }}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── OBSERVACIONES ─────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-chat-left-text me-2"></i>Observaciones</div>
+            {{ form.observaciones }}
+            {% if form.observaciones.errors %}<div class="field-error mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.observaciones.errors.0 }}</div>{% endif %}
+          </div>
+
+          <!-- Hidden fields -->
+          {{ form.dv.as_hidden }}
+
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+              {% if accion == "crear" %}<i class="bi bi-building-add me-2"></i>Crear Cliente
+              {% else %}<i class="bi bi-check-circle me-2"></i>Actualizar Cliente{% endif %}
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'core/_form_styles.html' %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var supervisorSelect = document.querySelector('select[name="supervisor"]');
+    var edvSelect        = document.querySelector('select[name="edv"]');
+
+    if (!supervisorSelect || !edvSelect) return;
+
+    var MAPA  = {{ supervisor_ejecutivos_json|safe }};
+    var TODOS = {{ todos_ejecutivos_json|safe }};
+    var ES_MANAGER   = {{ es_manager|yesno:"true,false" }};
+    var ES_EJECUTIVO = {{ es_ejecutivo|yesno:"true,false" }};
+
+    function poblarEdv(lista, valorActual) {
+        edvSelect.innerHTML = '<option value="">-- Selecciona ejecutivo --</option>';
+        lista.forEach(function (nombre) {
+            var opt = document.createElement('option');
+            opt.value = nombre;
+            opt.textContent = nombre;
+            if (nombre === valorActual) opt.selected = true;
+            edvSelect.appendChild(opt);
+        });
+        if (window.jQuery && $(edvSelect).data('select2')) {
+            $(edvSelect).trigger('change');
+        } else {
+            edvSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    function onSupervisorChange(val) {
+        var valorActualEdv = edvSelect.value;
+        var lista;
+        if (!val) {
+            lista = TODOS;
+        } else if (MAPA[val] && MAPA[val].length) {
+            lista = MAPA[val];
+        } else {
+            lista = [];
+        }
+        poblarEdv(lista, valorActualEdv);
+
+        var hint = document.getElementById('edv-hint');
+        if (!hint) {
+            hint = document.createElement('small');
+            hint.id = 'edv-hint';
+            hint.style.cssText = 'display:block;margin-top:4px;font-size:12px;color:#dc3545;';
+            edvSelect.parentElement.appendChild(hint);
+        }
+        hint.textContent = (val && lista.length === 0)
+            ? '⚠ Este supervisor no tiene ejecutivos asignados en el sistema.' : '';
+    }
+
+    // Escuchar cambios en supervisor
+    if (window.jQuery) {
+        $(supervisorSelect).on('change select2:select select2:unselect', function () {
+            onSupervisorChange($(this).val() || this.value);
+        });
+    } else {
+        supervisorSelect.addEventListener('change', function () { onSupervisorChange(this.value); });
+    }
+
+    // Arrancar cascade inicial (después de que Select2 esté listo)
+    function initCascade() {
+        if (supervisorSelect.value) {
+            onSupervisorChange(supervisorSelect.value);
+        }
+        // Bloquear campos según rol
+        function bloquearSelect(sel, nombreHidden) {
+            if (!sel) return;
+            if (window.jQuery && $(sel).data('select2')) {
+                $(sel).prop('disabled', true).trigger('change');
+            } else {
+                sel.disabled = true;
+            }
+            // Hidden input para enviar el valor aunque esté disabled
+            var hid = sel.form.querySelector('input[name="' + nombreHidden + '"][type="hidden"]');
+            if (!hid) {
+                hid = document.createElement('input');
+                hid.type = 'hidden';
+                hid.name = nombreHidden;
+                sel.parentNode.appendChild(hid);
+            }
+            hid.value = sel.value;
+        }
+
+        if (ES_MANAGER) {
+            bloquearSelect(supervisorSelect, 'supervisor');
+        }
+        if (ES_EJECUTIVO) {
+            bloquearSelect(supervisorSelect, 'supervisor');
+            bloquearSelect(edvSelect, 'edv');
+        }
+    }
+
+    // Esperar a que forms_enhanced.js inicialice Select2
+    if (window.jQuery && $.fn.select2) {
+        // Si Select2 ya está en supervisorSelect, arrancar de inmediato
+        setTimeout(initCascade, 80);
+    } else {
+        initCascade();
+    }
+});
+</script>
+{% endblock %}

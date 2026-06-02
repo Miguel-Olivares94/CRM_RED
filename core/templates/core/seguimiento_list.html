@@ -1,0 +1,152 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Seguimientos - CRM Comercial{% endblock %}
+{% block page_title %}Seguimientos{% endblock %}
+{% block breadcrumb_item %}Alertas y Tareas{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-list-check me-2"></i>Seguimientos</h2>
+        <p style="color: #6c757d;">Alertas, recordatorios y tareas</p>
+    </div>
+    <a href="{% url 'core:seguimiento_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus me-2"></i>Nuevo Seguimiento
+    </a>
+</div>
+
+<!-- Búsqueda y Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="PENDIENTE" {% if request.GET.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                    <option value="EN_PROGRESO" {% if request.GET.estado == 'EN_PROGRESO' %}selected{% endif %}>En progreso</option>
+                    <option value="COMPLETADA" {% if request.GET.estado == 'COMPLETADA' %}selected{% endif %}>Completada</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list me-2"></i>Seguimientos ({{ seguimientos|length }} resultados)
+    </div>
+    <div class="card-body">
+        {% if seguimientos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Oportunidad</th>
+                            <th>Tipo</th>
+                            <th>Prioridad</th>
+                            <th>Estado</th>
+                            <th>Vencimiento</th>
+                            <th>Asignado a</th>
+                            <th>Creado por</th>
+                            <th>Descripción</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for seg in seguimientos %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'core:oportunidad_detail' seg.oportunidad.pk %}">
+                                        {{ seg.oportunidad.cliente.nombre_empresa|truncatewords:2 }}
+                                    </a>
+                                </td>
+                                <td>{{ seg.get_tipo_display }}</td>
+                                <td>
+                                    {% if seg.prioridad == 'BAJA' %}
+                                        <span class="badge" style="background-color: #51cf66;">Baja</span>
+                                    {% elif seg.prioridad == 'MEDIA' %}
+                                        <span class="badge" style="background-color: #5cb85c;">Media</span>
+                                    {% elif seg.prioridad == 'ALTA' %}
+                                        <span class="badge" style="background-color: #f0ad4e;">Alta</span>
+                                    {% elif seg.prioridad == 'CRITICA' %}
+                                        <span class="badge" style="background-color: #d32f2f;">Crítica</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if seg.estado == 'PENDIENTE' %}
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    {% elif seg.estado == 'EN_PROGRESO' %}
+                                        <span class="badge bg-info">En progreso</span>
+                                    {% elif seg.estado == 'COMPLETADA' %}
+                                        <span class="badge bg-success">Completada</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ seg.fecha_vencimiento|date:"d/m/Y"|default:"-" }}</td>
+                                <td>{{ seg.asignado_a.get_full_name|default:"-" }}</td>
+                                <td>
+                                    {% if seg.creado_por %}
+                                        <small class="text-muted">{{ seg.creado_por.get_full_name|default:seg.creado_por.email }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Sistema</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ seg.descripcion|truncatewords:5 }}</td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'core:seguimiento_update' seg.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% if user_role == 'admin' or user_role == 'superadmin' or user_role == 'manager' %}
+                                        <a href="{% url 'core:seguimiento_delete' seg.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET|urlencode:'' }}">Primero</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET|urlencode:'' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET|urlencode:'' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET|urlencode:'' }}">Último</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center py-5">No hay seguimientos registrados</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

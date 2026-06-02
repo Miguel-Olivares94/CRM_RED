@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Seguimientos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x:hidden;">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <div class="card card-primary shadow-lg">
+      <div class="card-header card-header-primary d-flex align-items-center">
+        <i class="bi bi-clipboard2-pulse me-2"></i>
+        <span>{{ titulo }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+              <div><strong>Errores:</strong>{% for e in form.non_field_errors %}<div class="mt-1">{{ e }}</div>{% endfor %}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          <!-- ── SEGUIMIENTO ──────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-diagram-3 me-2"></i>Seguimiento</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.oportunidad.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.oportunidad }}
+                {% if form.oportunidad.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.oportunidad.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.tipo.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.tipo }}
+                {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.asignado_a.label_tag }}</div>
+                {{ form.asignado_a }}
+                {% if form.asignado_a.errors %}<div class="field-error">{{ form.asignado_a.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.prioridad.label_tag }}</div>
+                {{ form.prioridad }}
+                {% if form.prioridad.errors %}<div class="field-error">{{ form.prioridad.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.estado.label_tag }}</div>
+                {{ form.estado }}
+                {% if form.estado.errors %}<div class="field-error">{{ form.estado.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── DETALLES ─────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-card-text me-2"></i>Detalles</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.descripcion.label_tag }}</div>
+                {{ form.descripcion }}
+                {% if form.descripcion.errors %}<div class="field-error">{{ form.descripcion.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.fecha_vencimiento.label_tag }}</div>
+                {{ form.fecha_vencimiento }}
+                {% if form.fecha_vencimiento.errors %}<div class="field-error">{{ form.fecha_vencimiento.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+              {% if accion == "crear" %}<i class="bi bi-clipboard2-plus me-2"></i>Crear Seguimiento
+              {% else %}<i class="bi bi-check-circle me-2"></i>Actualizar Seguimiento{% endif %}
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'core/_form_styles.html' %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Indicador visual de prioridad
+    const prioridadSelect = document.querySelector('select[name="prioridad"]');
+    const PRIO_COLOR = { 'ALTA': '#dc3545', 'MEDIA': '#fd7e14', 'BAJA': '#198754' };
+    if (prioridadSelect) {
+        const badge = document.createElement('small');
+        badge.style.cssText = 'display:block;margin-top:5px;font-size:12px;font-weight:700;';
+        prioridadSelect.parentElement.appendChild(badge);
+        function actualizarPrio(val) {
+            const color = PRIO_COLOR[val];
+            if (color && val) {
+                badge.style.color = color;
+                badge.textContent = '● ' + prioridadSelect.options[prioridadSelect.selectedIndex].text;
+            } else badge.textContent = '';
+        }
+        prioridadSelect.addEventListener('change', () => actualizarPrio(prioridadSelect.value));
+        actualizarPrio(prioridadSelect.value);
+    }
+});
+</script>
+{% endblock %}

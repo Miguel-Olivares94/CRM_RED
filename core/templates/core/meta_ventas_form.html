@@ -1,0 +1,136 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Metas de Ventas{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x:hidden;">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <div class="card card-primary shadow-lg">
+      <div class="card-header card-header-primary d-flex align-items-center">
+        <i class="bi bi-trophy me-2"></i>
+        <span>{{ titulo }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+              <div><strong>Errores:</strong>{% for e in form.non_field_errors %}<div class="mt-1">{{ e }}</div>{% endfor %}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          <!-- ── EJECUTIVO Y PERÍODO ──────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-person-badge me-2"></i>Ejecutivo y Período</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-7">
+                <div class="form-label-wrapper">{{ form.usuario.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.usuario }}
+                {% if form.usuario.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.usuario.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-5">
+                <div class="form-label-wrapper">{{ form.periodo.label_tag }}<span class="text-danger ms-1">*</span></div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-calendar2-month input-icon"></i>
+                  {{ form.periodo }}
+                </div>
+                {% if form.periodo.errors %}<div class="field-error">{{ form.periodo.errors.0 }}</div>{% endif %}
+                <small class="text-muted" style="font-size:11px;"><i class="bi bi-info-circle me-1"></i>Formato: AAAA-MM (ej: 2026-06)</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── METAS DE LÍNEAS ──────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-sim me-2"></i>Metas de Líneas</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.meta_lineas_portabilidad.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-arrow-left-right input-icon"></i>
+                  {{ form.meta_lineas_portabilidad }}
+                </div>
+                {% if form.meta_lineas_portabilidad.errors %}<div class="field-error">{{ form.meta_lineas_portabilidad.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.meta_lineas_nueva.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-plus-circle input-icon"></i>
+                  {{ form.meta_lineas_nueva }}
+                </div>
+                {% if form.meta_lineas_nueva.errors %}<div class="field-error">{{ form.meta_lineas_nueva.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.meta_lineas_m2m.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-wifi input-icon"></i>
+                  {{ form.meta_lineas_m2m }}
+                </div>
+                {% if form.meta_lineas_m2m.errors %}<div class="field-error">{{ form.meta_lineas_m2m.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── VALORES ECONÓMICOS ───────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-currency-dollar me-2"></i>Valores Económicos</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.meta_monto_total.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-cash-coin input-icon"></i>
+                  {{ form.meta_monto_total }}
+                </div>
+                {% if form.meta_monto_total.errors %}<div class="field-error">{{ form.meta_monto_total.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.comision_base.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-percent input-icon"></i>
+                  {{ form.comision_base }}
+                </div>
+                {% if form.comision_base.errors %}<div class="field-error">{{ form.comision_base.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.comision_por_linea.label_tag }}</div>
+                {{ form.comision_por_linea }}
+                {% if form.comision_por_linea.errors %}<div class="field-error">{{ form.comision_por_linea.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.factor_aceleracion.label_tag }}</div>
+                {{ form.factor_aceleracion }}
+                {% if form.factor_aceleracion.errors %}<div class="field-error">{{ form.factor_aceleracion.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="form-label-wrapper">{{ form.bonificacion_meta.label_tag }}</div>
+                {{ form.bonificacion_meta }}
+                {% if form.bonificacion_meta.errors %}<div class="field-error">{{ form.bonificacion_meta.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+              {% if accion == "crear" %}<i class="bi bi-trophy me-2"></i>Crear Meta
+              {% else %}<i class="bi bi-check-circle me-2"></i>Actualizar Meta{% endif %}
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'core/_form_styles.html' %}
+{% endblock %}

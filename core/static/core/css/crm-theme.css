@@ -1,0 +1,306 @@
+/* ══════════════════════════════════════════════════════════
+   CRM CLARO CHILE — THEME OVERRIDE PARA ADMINLTE 4
+   Paleta: #E8000D (rojo principal) · #B80000 (oscuro)
+          #FFF0F0 (fondo claro)
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --crm-red:        #E8000D;
+  --crm-red-dark:   #B80000;
+  --crm-red-mid:    #FF2020;
+  --crm-red-light:  #FFF0F0;
+  --crm-red-soft:   #FFB3B3;
+
+  --bs-primary:        #E8000D;
+  --bs-primary-rgb:    232, 0, 13;
+  --bs-danger:         #B80000;
+  --bs-danger-rgb:     184, 0, 0;
+  --bs-body-bg:        #f8f9fa;
+}
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.crm-topbar {
+  background: var(--crm-red) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 10px rgba(232, 0, 13, 0.35);
+}
+.crm-topbar .nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.crm-topbar .nav-link:hover {
+  color: #fff !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.crm-sidebar,
+.app-sidebar {
+  background-color: var(--crm-red) !important;
+}
+
+.crm-sidebar .nav-header {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 10px 15px 4px;
+}
+
+.crm-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  padding: 8px 15px !important;
+}
+
+.crm-sidebar .nav-link:hover,
+.crm-sidebar .nav-link.active {
+  color: #fff !important;
+  background: transparent !important;
+  border-left-color: #fff !important;
+  padding-left: 20px !important;
+}
+
+.crm-sidebar .nav-icon {
+  color: rgba(255, 255, 255, 0.85) !important;
+  width: 18px;
+  font-size: 15px;
+  margin-right: 8px;
+}
+
+/* ── Brand ──────────────────────────────────────────────── */
+.crm-brand {
+  background-color: var(--crm-red-dark) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.crm-footer {
+  background: var(--crm-red) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-top: none !important;
+}
+.crm-footer a { color: #fff !important; }
+
+/* ── Cards ──────────────────────────────────────────────── */
+.card {
+  border: none;
+  border-left: 4px solid var(--crm-red);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+.card-header {
+  background: var(--crm-red) !important;
+  color: #fff !important;
+  border-bottom: none !important;
+  border-radius: 8px 8px 0 0 !important;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 16px;
+}
+
+/* ── Tablas ─────────────────────────────────────────────── */
+.table thead th {
+  background: var(--crm-red) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 10px;
+}
+.table td { vertical-align: middle; font-size: 13px; }
+.table tbody tr:hover { background-color: var(--crm-red-light); }
+
+/* ── Botones ─────────────────────────────────────────────── */
+.btn-primary {
+  background-color: var(--crm-red) !important;
+  border-color: var(--crm-red) !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--crm-red-dark) !important;
+  border-color: var(--crm-red-dark) !important;
+}
+.btn-outline-primary {
+  color: var(--crm-red) !important;
+  border-color: var(--crm-red) !important;
+}
+.btn-outline-primary:hover {
+  background-color: var(--crm-red) !important;
+  color: #fff !important;
+}
+.btn-danger {
+  background-color: var(--crm-red-dark) !important;
+  border-color: var(--crm-red-dark) !important;
+}
+
+/* ── Formularios ────────────────────────────────────────── */
+.form-control, .form-select {
+  border-radius: 8px;
+  border: 2px solid var(--crm-red-soft);
+  background-color: var(--crm-red-light);
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--crm-red);
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(232, 0, 13, 0.1);
+}
+.form-control:hover, .form-select:hover {
+  border-color: var(--crm-red);
+}
+.form-check-input:checked {
+  background-color: var(--crm-red);
+  border-color: var(--crm-red);
+}
+
+/* ── Badges ─────────────────────────────────────────────── */
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+.badge-alerta {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ── KPI Cards modernos ─────────────────────────────────── */
+.kpi-modern {
+  border-left: 4px solid var(--crm-red) !important;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+.kpi-modern:hover {
+  box-shadow: 0 6px 20px rgba(232, 0, 13, 0.18) !important;
+  transform: translateY(-3px);
+}
+.kpi-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 26px;
+}
+.kpi-num {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.kpi-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-footer-link {
+  display: block;
+  padding: 7px 16px;
+  background: rgba(232, 0, 13, 0.05);
+  border-top: 1px solid rgba(232, 0, 13, 0.08);
+  font-size: 12px;
+  color: var(--crm-red);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.kpi-footer-link:hover {
+  background: rgba(232, 0, 13, 0.1);
+  color: var(--crm-red-dark);
+}
+
+/* ── Alertas ─────────────────────────────────────────────── */
+.alert-success {
+  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
+  border-left: 4px solid var(--crm-red);
+  color: #333;
+}
+.alert-danger {
+  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
+  border-left: 4px solid var(--crm-red-mid);
+  color: #333;
+}
+.alert-warning {
+  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
+  border-left: 4px solid var(--crm-red-dark);
+  color: #333;
+}
+.alert-info {
+  background: linear-gradient(135deg, #FFE8E8, #FFB3B3);
+  border-left: 4px solid var(--crm-red-dark);
+  color: #333;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────────── */
+.breadcrumb-item a { color: var(--crm-red); text-decoration: none; }
+.breadcrumb-item a:hover { color: var(--crm-red-dark); }
+
+/* ── KPI Cards ───────────────────────────────────────────── */
+.kpi-card { text-align: center; padding: 20px 15px; }
+.kpi-card i { font-size: 32px; margin-bottom: 10px; display: block; }
+.kpi-value { font-size: 24px; font-weight: 700; margin: 10px 0; }
+.kpi-label { font-size: 12px; color: #666; text-transform: uppercase; }
+
+/* ── Búsqueda ────────────────────────────────────────────── */
+.search-form { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+.search-form input,
+.search-form select { flex: 1; min-width: 150px; }
+
+/* ── Acciones ────────────────────────────────────────────── */
+.actions-btn { display: flex; gap: 3px; }
+.actions-btn .btn { padding: 4px 8px; font-size: 11px; }
+
+/* ── Líneas mini-boxes ───────────────────────────────────── */
+.lineas-kpi-box {
+  background: #fff;
+  border: 2px solid;
+  border-radius: 10px;
+  padding: 14px 10px;
+  text-align: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.lineas-kpi-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.lineas-kpi-num {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.lineas-kpi-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c757d;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .table { font-size: 12px; }
+  .table td, .table th { padding: 6px 8px; }
+  .kpi-value { font-size: 20px; }
+}

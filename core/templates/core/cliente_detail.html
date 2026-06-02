@@ -1,0 +1,427 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ cliente.nombre_empresa }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ cliente.nombre_empresa }}{% endblock %}
+{% block breadcrumb_item %}Detalles Cliente{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;"><i class="bi bi-building me-2"></i>{{ cliente.nombre_empresa }}</h2>
+        <p style="color: #6c757d; margin-bottom: 0;">
+            <strong>RUT:</strong> {{ cliente.rut }} | 
+            <strong>Sector:</strong> {{ cliente.sector|default:"-" }}
+        </p>
+    </div>
+    <div>
+        <a href="{% url 'core:cliente_update' cliente.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-2"></i>Editar
+        </a>
+        <a href="{% url 'core:cliente_delete' cliente.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash me-2"></i>Eliminar
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Información General -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Información General
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Tipo de Cliente:</strong>
+                        <p class="text-muted">{{ cliente.tipo_cliente|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Estado:</strong>
+                        <p>
+                            {% if cliente.estado == 'ACTIVO' %}
+                                <span class="badge bg-success">Activo</span>
+                            {% elif cliente.estado == 'INACTIVO' %}
+                                <span class="badge bg-danger">Inactivo</span>
+                            {% elif cliente.estado == 'DORMIDO' %}
+                                <span class="badge bg-secondary">Dormido</span>
+                            {% elif cliente.estado == 'PROSPECT' %}
+                                <span class="badge bg-info">Prospect</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ejecutivo Asignado:</strong>
+                        <p class="text-muted">{{ cliente.usuario_asignado.get_full_name|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Fecha de Registro:</strong>
+                        <p class="text-muted">{{ cliente.fecha_registro|date:"d/m/Y"|default:"-" }}</p>
+                    </div>
+                </div>
+
+                {% if cliente.observaciones %}
+                    <div class="mt-3 pt-3 border-top">
+                        <strong>Observaciones:</strong>
+                        <p class="text-muted">{{ cliente.observaciones }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Segmentación -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-diagram-3 me-2"></i>Segmentación
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Segmento:</strong>
+                        <p class="text-muted">{{ cliente.segmento|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Subrango:</strong>
+                        <p class="text-muted">{{ cliente.subrango|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Supervisor:</strong>
+                        <p class="text-muted">{{ cliente.supervisor|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Subgerencia:</strong>
+                        <p class="text-muted">{{ cliente.subgerencia|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Renta UF Total:</strong>
+                        <p class="text-muted">{{ cliente.renta_uf_total|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>EDV:</strong>
+                        <p class="text-muted">{{ cliente.edv|default:"-" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cartera de Líneas -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-sim-fill me-2"></i>Cartera de Líneas
+            </div>
+            <div class="card-body">
+
+                <!-- KPI mini-cards -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6 col-sm-3">
+                        <div class="lineas-kpi-box" style="border-color:#E8000D;">
+                            <div class="lineas-kpi-num" style="color:#E8000D;">{{ cliente.q_total_lineas|default:"0" }}</div>
+                            <div class="lineas-kpi-lbl">Total</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="lineas-kpi-box" style="border-color:#667eea;">
+                            <div class="lineas-kpi-num" style="color:#667eea;">{{ cliente.bam|default:"0" }}</div>
+                            <div class="lineas-kpi-lbl">BAM</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="lineas-kpi-box" style="border-color:#B80000;">
+                            <div class="lineas-kpi-num" style="color:#B80000;">{{ cliente.m2m|default:"0" }}</div>
+                            <div class="lineas-kpi-lbl">M2M</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="lineas-kpi-box" style="border-color:#51cf66;">
+                            <div class="lineas-kpi-num" style="color:#51cf66;">{{ cliente.voz|default:"0" }}</div>
+                            <div class="lineas-kpi-lbl">VOZ / GPS</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico + Barras -->
+                <div class="row g-3 align-items-center">
+                    <!-- Donut -->
+                    <div class="col-md-4 text-center">
+                        <canvas id="lineasDonut" width="180" height="180"></canvas>
+                    </div>
+                    <!-- Barras de progreso -->
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-semibold" style="font-size:13px;">BAM</span>
+                                <span class="fw-bold" style="color:#667eea;">{{ cliente.bam|default:"0" }}</span>
+                            </div>
+                            <div class="progress" style="height:10px;border-radius:6px;">
+                                <div class="progress-bar" id="bar-bam" role="progressbar"
+                                     style="background:#667eea;border-radius:6px;width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-semibold" style="font-size:13px;">M2M</span>
+                                <span class="fw-bold" style="color:#B80000;">{{ cliente.m2m|default:"0" }}</span>
+                            </div>
+                            <div class="progress" style="height:10px;border-radius:6px;">
+                                <div class="progress-bar" id="bar-m2m" role="progressbar"
+                                     style="background:#B80000;border-radius:6px;width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-semibold" style="font-size:13px;">VOZ / GPS</span>
+                                <span class="fw-bold" style="color:#51cf66;">{{ cliente.voz|default:"0" }}</span>
+                            </div>
+                            <div class="progress" style="height:10px;border-radius:6px;">
+                                <div class="progress-bar" id="bar-voz" role="progressbar"
+                                     style="background:#51cf66;border-radius:6px;width:0%"></div>
+                            </div>
+                        </div>
+                        {% if cliente.fijo or cliente.movil or cliente.fijo_movil %}
+                        <div class="mt-3 pt-3 border-top d-flex flex-wrap gap-3" style="font-size:13px;">
+                            {% if cliente.fijo %}<span><i class="bi bi-telephone me-1 text-muted"></i><strong>Fijo:</strong> {{ cliente.fijo }}</span>{% endif %}
+                            {% if cliente.movil %}<span><i class="bi bi-phone me-1 text-muted"></i><strong>Móvil:</strong> {{ cliente.movil }}</span>{% endif %}
+                            {% if cliente.fijo_movil %}<span><i class="bi bi-phone-flip me-1 text-muted"></i><strong>Fijo+Móvil:</strong> {{ cliente.fijo_movil }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Contactos -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-2"></i>Contactos ({{ contactos|length }})</span>
+                <a href="{% url 'core:contacto_create' %}?cliente={{ cliente.pk }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Agregar
+                </a>
+            </div>
+            <div class="card-body">
+                {% if contactos %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Cargo</th>
+                                    <th>Rol</th>
+                                    <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contacto in contactos %}
+                                    <tr>
+                                        <td><strong>{{ contacto.nombre }}</strong></td>
+                                        <td>{{ contacto.cargo|default:"-" }}</td>
+                                        <td>
+                                            {% if contacto.rol == 'DECISOR' %}
+                                                <span class="badge bg-danger">Decisor</span>
+                                            {% elif contacto.rol == 'INFLUENCIADOR' %}
+                                                <span class="badge bg-warning">Influenciador</span>
+                                            {% elif contacto.rol == 'USUARIO' %}
+                                                <span class="badge bg-info">Usuario</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Otro</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ contacto.email|default:"-" }}</td>
+                                        <td>{{ contacto.telefono_movil|default:contacto.telefono_fijo|default:"-" }}</td>
+                                        <td class="text-center">
+                                            <a href="{% url 'core:contacto_list' %}" class="btn btn-sm btn-outline-success" title="Ir a lista de contactos">
+                                                <i class="bi bi-people-fill me-1"></i>Contactos
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">No hay contactos registrados</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Oportunidades -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-star me-2"></i>Oportunidades Activas ({{ oportunidades|length }})</span>
+                <a href="{% url 'core:oportunidad_create' %}?cliente={{ cliente.pk }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Nueva
+                </a>
+            </div>
+            <div class="card-body">
+                {% if oportunidades %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Etapa</th>
+                                    <th>Productos</th>
+                                    <th class="text-end">Líneas</th>
+                                    <th>Probabilidad</th>
+                                    <th>Vencimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for opp in oportunidades %}
+                                    <tr onclick="window.location='{% url 'core:oportunidad_detail' opp.pk %}';" style="cursor: pointer;">
+                                        <td>
+                                            {% if opp.etapa == 'LEAD' %}
+                                                <span class="badge" style="background-color: #808080;">Lead</span>
+                                            {% elif opp.etapa == 'CONTACTO' %}
+                                                <span class="badge" style="background-color: #0275d8;">Contacto</span>
+                                            {% elif opp.etapa == 'CALIFICADO' %}
+                                                <span class="badge" style="background-color: #5bc0de;">Calificado</span>
+                                            {% elif opp.etapa == 'PROPUESTA' %}
+                                                <span class="badge" style="background-color: #5cb85c;">Propuesta</span>
+                                            {% elif opp.etapa == 'NEGOCIACION' %}
+                                                <span class="badge" style="background-color: #f0ad4e;">Negociación</span>
+                                            {% elif opp.etapa == 'CIERRE' %}
+                                                <span class="badge" style="background-color: #ff7043;">Cierre</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ opp.productos|default:"-" }}</td>
+                                        <td class="text-end"><strong>{{ opp.lineas|default:"-" }}</strong></td>
+                                        <td>{{ opp.probabilidad }}%</td>
+                                        <td>{{ opp.fecha_cierre_estimada|date:"d/m/Y"|default:"-" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">No hay oportunidades activas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- KPI Card -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>Resumen
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <strong class="text-muted d-block">Total Líneas</strong>
+                    <div class="kpi-value">{{ cliente.q_total_lineas|default:"0" }}</div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <strong class="text-muted d-block">Oportunidades Activas</strong>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #7c3aed;">{{ oportunidades|length }}</div>
+                </div>
+                <div>
+                    <strong class="text-muted d-block">Contactos Registrados</strong>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #7c3aed;">{{ contactos|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ubicación -->
+        {% if cliente.comuna or cliente.provincia or cliente.region %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-geo-alt me-2"></i>Ubicación
+                </div>
+                <div class="card-body">
+                    {% if cliente.comuna %}
+                        <p><strong>Comuna:</strong> {{ cliente.comuna }}</p>
+                    {% endif %}
+                    {% if cliente.provincia %}
+                        <p><strong>Provincia:</strong> {{ cliente.provincia }}</p>
+                    {% endif %}
+                    {% if cliente.region %}
+                        <p><strong>Región:</strong> {{ cliente.region }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Auditoría -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-clock me-2"></i>Auditoría
+            </div>
+            <div class="card-body small text-muted">
+                <p><strong>Creado:</strong><br>{{ cliente.created_at|date:"d/m/Y H:i" }}</p>
+                <p><strong>Actualizado:</strong><br>{{ cliente.updated_at|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+(function () {
+    const bam   = {{ cliente.bam|default:0 }};
+    const m2m   = {{ cliente.m2m|default:0 }};
+    const voz   = {{ cliente.voz|default:0 }};
+    const total = bam + m2m + voz;
+
+    // ── Donut ──────────────────────────────────────────────
+    new Chart(document.getElementById('lineasDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['BAM', 'M2M', 'VOZ / GPS'],
+            datasets: [{
+                data: total > 0 ? [bam, m2m, voz] : [1, 1, 1],
+                backgroundColor: ['#667eea', '#B80000', '#51cf66'],
+                borderColor: '#fff',
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: false,
+            cutout: '68%',
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => total > 0
+                            ? ` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw / total * 100)}%)`
+                            : ` ${ctx.label}: 0`
+                    }
+                }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            beforeDraw(chart) {
+                const { ctx, chartArea: { top, bottom, left, right } } = chart;
+                ctx.save();
+                ctx.font = 'bold 22px Segoe UI';
+                ctx.fillStyle = '#E8000D';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(total, (left + right) / 2, (top + bottom) / 2 - 8);
+                ctx.font = '11px Segoe UI';
+                ctx.fillStyle = '#6c757d';
+                ctx.fillText('TOTAL', (left + right) / 2, (top + bottom) / 2 + 14);
+                ctx.restore();
+            }
+        }]
+    });
+
+    // ── Barras de progreso ─────────────────────────────────
+    function setBar(id, value) {
+        const pct = total > 0 ? Math.round(value / total * 100) : 0;
+        const el = document.getElementById(id);
+        if (el) el.style.width = pct + '%';
+    }
+    setBar('bar-bam', bam);
+    setBar('bar-m2m', m2m);
+    setBar('bar-voz', voz);
+})();
+</script>
+{% endblock %}

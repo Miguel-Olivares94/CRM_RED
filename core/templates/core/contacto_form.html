@@ -1,0 +1,448 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Contactos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x: hidden;">
+    <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+        <div class="card card-primary shadow-lg">
+            <div class="card-header card-header-primary d-flex align-items-center">
+                <i class="bi bi-person-plus me-2"></i>
+                <span>{{ titulo }}</span>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate id="contacto-form">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 18px;"></i>
+                                <div>
+                                    <strong>Errores en el formulario:</strong>
+                                    {% for error in form.non_field_errors %}
+                                        <div style="margin-top: 5px;">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+
+                    <!-- Empresa -->
+                    <div class="form-section mb-4">
+                        <div class="section-title">
+                            <i class="bi bi-building me-2"></i>Empresa
+                        </div>
+                        <div class="form-group mb-3">
+                            <div class="form-label-wrapper">
+                                {{ form.cliente.label_tag }}
+                                <span class="text-danger ms-1">*</span>
+                            </div>
+                            {{ form.cliente }}
+                            {% if form.cliente.errors %}
+                                <div class="field-error mt-1">
+                                    <i class="bi bi-exclamation-circle me-1"></i>{{ form.cliente.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Datos personales -->
+                    <div class="form-section mb-4">
+                        <div class="section-title">
+                            <i class="bi bi-person me-2"></i>Datos del Contacto
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-8">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.nombre.label_tag }}
+                                        <span class="text-danger ms-1">*</span>
+                                    </div>
+                                    {{ form.nombre }}
+                                    {% if form.nombre.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.nombre.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.rol.label_tag }}
+                                        <span class="text-danger ms-1">*</span>
+                                    </div>
+                                    {{ form.rol }}
+                                    {% if form.rol.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.rol.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.cargo.label_tag }}
+                                    </div>
+                                    {{ form.cargo }}
+                                    {% if form.cargo.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.cargo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información de contacto -->
+                    <div class="form-section mb-4">
+                        <div class="section-title">
+                            <i class="bi bi-envelope me-2"></i>Información de Contacto
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.email.label_tag }}
+                                    </div>
+                                    <div class="input-icon-wrapper">
+                                        <i class="bi bi-envelope input-icon"></i>
+                                        {{ form.email }}
+                                    </div>
+                                    {% if form.email.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.email.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.telefono_movil.label_tag }}
+                                    </div>
+                                    <div class="input-icon-wrapper">
+                                        <i class="bi bi-phone input-icon"></i>
+                                        {{ form.telefono_movil }}
+                                    </div>
+                                    {% if form.telefono_movil.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.telefono_movil.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-label-wrapper">
+                                        {{ form.telefono_fijo.label_tag }}
+                                    </div>
+                                    <div class="input-icon-wrapper">
+                                        <i class="bi bi-telephone input-icon"></i>
+                                        {{ form.telefono_fijo }}
+                                    </div>
+                                    {% if form.telefono_fijo.errors %}
+                                        <div class="field-error mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>{{ form.telefono_fijo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="form-section mb-2">
+                        <div class="section-title">
+                            <i class="bi bi-toggle-on me-2"></i>Estado
+                        </div>
+                        <div class="form-check-custom d-flex align-items-center gap-3 px-3 py-2" style="border: 2px solid #e0e7ff; border-radius: 8px; background-color: #f8faff;">
+                            {{ form.activo.label_tag }}
+                            {{ form.activo }}
+                        </div>
+                        <small class="form-text text-muted mt-1 d-block">
+                            <i class="bi bi-info-circle me-1"></i>Los contactos inactivos no aparecen en las listas principales.
+                        </small>
+                    </div>
+
+                    <div class="form-actions d-flex gap-3 mt-5 pt-4 border-top">
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                            {% if accion == "crear" %}
+                                <i class="bi bi-person-plus me-2"></i>Crear Contacto
+                            {% else %}
+                                <i class="bi bi-check-circle me-2"></i>Actualizar Contacto
+                            {% endif %}
+                        </button>
+                        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-section {
+        background: #f8faff;
+        border: 1px solid #e0e7ff;
+        border-radius: 10px;
+        padding: 1.25rem 1.25rem 0.75rem;
+    }
+
+    .section-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #D63031;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e0e7ff;
+    }
+
+    .form-label-wrapper {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-label-wrapper label {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .input-icon-wrapper {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #aaa;
+        font-size: 15px;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .input-icon-wrapper .form-control {
+        padding-left: 36px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 2px solid #e0e7ff;
+        padding: 0.65rem 0.9rem;
+        font-size: 14px;
+        transition: all 0.25s ease;
+        background-color: #fff;
+        font-weight: 500;
+    }
+
+    .form-control::placeholder {
+        color: #bbb;
+        font-weight: 400;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #D63031;
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(214, 48, 49, 0.1);
+        outline: none;
+    }
+
+    .form-control:hover, .form-select:hover {
+        border-color: #FF7F7F;
+    }
+
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc3545 !important;
+    }
+
+    .form-control.is-valid, .form-select.is-valid {
+        border-color: #28a745 !important;
+    }
+
+    .field-error {
+        color: #dc3545;
+        font-size: 12.5px;
+        display: flex;
+        align-items: center;
+        padding: 0.3rem 0.6rem;
+        background-color: #fff5f5;
+        border-left: 3px solid #dc3545;
+        border-radius: 4px;
+    }
+
+    .form-check-custom input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #D63031;
+    }
+
+    .form-check-custom label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    /* Botones */
+    .btn-primary {
+        background: linear-gradient(135deg, #FF4D4D 0%, #D63031 100%);
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        box-shadow: 0 4px 12px rgba(255, 77, 77, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 77, 77, 0.45);
+        background: linear-gradient(135deg, #D63031 0%, #C23030 100%);
+    }
+
+    .btn-outline-secondary {
+        border: 2px solid #dee2e6;
+        color: #666;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.25s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        border-color: #D63031;
+        color: #D63031;
+        background-color: transparent;
+    }
+
+    .btn-lg { font-size: 14px; }
+
+    .form-actions {
+        background: linear-gradient(135deg, #f5f9ff 0%, #fafbfc 100%);
+        padding: 1.25rem !important;
+        margin: 2rem -1rem -1rem -1rem !important;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .card.card-primary {
+        border: none;
+        box-shadow: 0 4px 20px rgba(255, 77, 77, 0.15);
+    }
+
+    .card-header-primary {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    @keyframes slideInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card { animation: slideInUp 0.3s ease; }
+
+    .form-section:nth-child(1) { animation: slideInUp 0.3s ease 0.05s both; }
+    .form-section:nth-child(2) { animation: slideInUp 0.3s ease 0.10s both; }
+    .form-section:nth-child(3) { animation: slideInUp 0.3s ease 0.15s both; }
+    .form-section:nth-child(4) { animation: slideInUp 0.3s ease 0.20s both; }
+
+    @media (max-width: 576px) {
+        .form-actions { flex-direction: column; }
+        .form-actions .btn { width: 100%; }
+    }
+</style>
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet"/>
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        border: 2px solid #e0e7ff; border-radius: 8px;
+        background-color: #fff; min-height: 42px; font-size: 14px;
+    }
+    .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+    .select2-container--bootstrap-5.select2-container--open .select2-selection {
+        border-color: #D63031; box-shadow: 0 0 0 3px rgba(214,48,49,0.1);
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+        border: 2px solid #D63031; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background-color: #D63031 !important;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'core/js/forms_enhanced.js' %}?v=8"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Auto-focus en nombre si el campo está vacío
+    const nombreInput = document.querySelector('input[name="nombre"]');
+    if (nombreInput && !nombreInput.value) {
+        setTimeout(() => nombreInput.focus(), 300);
+    }
+
+    // Validación visual de email en tiempo real
+    const emailInput = document.querySelector('input[name="email"]');
+    if (emailInput) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        emailInput.addEventListener('blur', function () {
+            if (this.value && !emailRegex.test(this.value)) {
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+            } else if (this.value) {
+                this.classList.add('is-valid');
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+
+    // Indicador de rol con color
+    const rolSelect = document.querySelector('select[name="rol"]');
+    const ROL_BADGE = {
+        'DECISOR': { color: '#dc3545', icon: '⚡' }, // label: Decidor
+        'INFLUENCIADOR': { color: '#fd7e14', icon: '💡' },
+        'USUARIO': { color: '#0d6efd', icon: '👤' },
+        'OTRO': { color: '#6c757d', icon: '•' },
+    };
+
+    if (rolSelect) {
+        const badge = document.createElement('small');
+        badge.style.cssText = 'display:block;margin-top:5px;font-size:12px;font-weight:600;';
+        rolSelect.parentElement.appendChild(badge);
+
+        function actualizarBadgeRol(val) {
+            const info = ROL_BADGE[val];
+            if (info && val) {
+                badge.style.color = info.color;
+                badge.textContent = info.icon + ' ' + rolSelect.options[rolSelect.selectedIndex].text;
+            } else {
+                badge.textContent = '';
+            }
+        }
+
+        rolSelect.addEventListener('change', () => actualizarBadgeRol(rolSelect.value));
+        actualizarBadgeRol(rolSelect.value);
+    }
+});
+</script>
+{% endblock %}

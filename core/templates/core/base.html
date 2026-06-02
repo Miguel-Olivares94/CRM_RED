@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CRM - Gestión Comercial{% endblock %}</title>
+
+  {% load static %}
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <!-- AdminLTE 4 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta3/dist/css/adminlte.min.css">
+  <!-- Colores Claro Chile -->
+  <link rel="stylesheet" href="{% static 'core/css/crm-theme.css' %}">
+  <!-- Forms CSS -->
+  <link rel="stylesheet" href="{% static 'core/css/forms.css' %}">
+
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
+
+  <!-- ══ TOPBAR ══════════════════════════════════════════ -->
+  <nav class="app-header navbar navbar-expand crm-topbar">
+    <div class="container-fluid">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
+            <i class="bi bi-list fs-5"></i>
+          </a>
+        </li>
+        <li class="nav-item d-none d-md-flex align-items-center ms-2">
+          <span class="fw-bold text-white">
+            {% block page_title %}Dashboard{% endblock %}
+          </span>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+        <li class="nav-item d-none d-sm-inline-flex align-items-center">
+          <span class="text-white opacity-75 me-3 small">
+            <i class="bi bi-person-circle me-1"></i>{{ user.get_full_name|default:user.username }}
+          </span>
+        </li>
+        <li class="nav-item">
+          <form method="post" action="{% url 'core:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-light">
+              <i class="bi bi-box-arrow-right me-1"></i>Salir
+            </button>
+          </form>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════ -->
+  <aside class="app-sidebar crm-sidebar shadow" data-bs-theme="dark">
+    <div class="sidebar-brand crm-brand">
+      <a href="{% url 'core:dashboard' %}" class="brand-link text-decoration-none d-flex align-items-center px-3 py-3">
+        <i class="bi bi-graph-up me-2 fs-5 text-white"></i>
+        <span class="brand-text fw-bold text-white fs-6">CRM</span>
+      </a>
+    </div>
+
+    <div class="sidebar-wrapper">
+      <nav class="mt-2">
+        <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
+
+          <li class="nav-header">MENÚ PRINCIPAL</li>
+          <li class="nav-item">
+            <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.resolver_match.name == 'dashboard' %}active{% endif %}">
+              <i class="nav-icon bi bi-house-door"></i><p>Inicio</p>
+            </a>
+          </li>
+
+          {% if user.groups.all|length > 0 %}
+            {% for group in user.groups.all %}
+              {% if group.name == "Manager" %}
+          <li class="nav-item">
+            <a href="{% url 'core:subordinados_management' %}" class="nav-link {% if request.resolver_match.name == 'subordinados_management' %}active{% endif %}">
+              <i class="nav-icon bi bi-people-fill"></i><p>Mis Vendedores</p>
+            </a>
+          </li>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          <li class="nav-header">GESTIÓN DE DATOS</li>
+          <li class="nav-item">
+            <a href="{% url 'core:cliente_list' %}" class="nav-link {% if 'cliente' in request.path and 'prospectado' not in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-building"></i><p>Clientes</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'core:contacto_list' %}" class="nav-link {% if 'contacto' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-person-lines-fill"></i><p>Contactos</p>
+            </a>
+          </li>
+
+          {% if user.is_superuser %}
+          <li class="nav-item">
+            <a href="{% url 'core:clientes_prospectados' %}" class="nav-link {% if 'prospectado' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-person-plus-fill"></i>
+              <p>Prospectados <span class="badge bg-warning ms-1" style="font-size:9px;">Nuevo</span></p>
+            </a>
+          </li>
+          {% else %}
+            {% for group in user.groups.all %}
+              {% if group.name == "Admin" or group.name == "Manager" %}
+          <li class="nav-item">
+            <a href="{% url 'core:clientes_prospectados' %}" class="nav-link {% if 'prospectado' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-person-plus-fill"></i>
+              <p>Prospectados <span class="badge bg-warning ms-1" style="font-size:9px;">Nuevo</span></p>
+            </a>
+          </li>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          <li class="nav-header">OPERACIONES</li>
+          <li class="nav-item">
+            <a href="{% url 'core:llamada_list' %}" class="nav-link {% if 'gestion' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-telephone"></i><p>Gestiones</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'core:seguimiento_list' %}" class="nav-link {% if 'seguimiento' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-list-check"></i><p>Seguimientos</p>
+            </a>
+          </li>
+
+          <li class="nav-header">VENTAS Y CARTERA</li>
+          <li class="nav-item">
+            <a href="{% url 'core:oportunidad_list' %}" class="nav-link {% if 'oportunidad' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-funnel"></i><p>Oportunidades</p>
+            </a>
+          </li>
+
+          <li class="nav-header">CONFIGURACIÓN</li>
+          {% if puede_asignar_equipo %}
+          <li class="nav-item">
+            <a href="{% url 'core:asignar_equipo' %}" class="nav-link {% if 'asignar' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-people-fill"></i><p>Asignar Equipo</p>
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a href="{% url 'admin:index' %}" class="nav-link">
+              <i class="nav-icon bi bi-gear"></i><p>Administrador</p>
+            </a>
+          </li>
+
+        </ul>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- ══ CONTENIDO PRINCIPAL ═══════════════════════════════ -->
+  <main class="app-main">
+    <div class="app-content-header py-2 px-3">
+      {% block breadcrumb %}
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+          <li class="breadcrumb-item active">{% block breadcrumb_item %}Página{% endblock %}</li>
+        </ol>
+      </nav>
+      {% endblock %}
+    </div>
+
+    <div class="app-content">
+      <div class="container-fluid">
+
+        {% if messages %}
+          {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ══ FOOTER ═══════════════════════════════════════════ -->
+  <footer class="app-footer crm-footer">
+    <span class="float-end d-none d-sm-inline">v1.0</span>
+    <strong>&copy; 2026 CRM.</strong> Todos los derechos reservados.
+  </footer>
+
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE 4 JS -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta3/dist/js/adminlte.min.js"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

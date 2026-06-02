@@ -1,0 +1,249 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block breadcrumb_item %}Gestiones{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="overflow-x:hidden;">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <div class="card card-primary shadow-lg">
+      <div class="card-header card-header-primary d-flex align-items-center">
+        <i class="bi bi-telephone-plus me-2"></i>
+        <span>{{ titulo }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+              <div><strong>Errores:</strong>{% for e in form.non_field_errors %}<div class="mt-1">{{ e }}</div>{% endfor %}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          {% if contacto_preseleccionado %}
+          <!-- ── DATOS DEL CLIENTE ──────────────────────────────── -->
+          <div class="alert alert-info border-0 mb-4 p-3" style="background:#e8f4fd;">
+            <div class="d-flex align-items-start gap-3">
+              <i class="bi bi-building text-primary" style="font-size:22px;margin-top:2px;"></i>
+              <div class="flex-grow-1">
+                <div class="fw-bold fs-6">{{ contacto_preseleccionado.cliente.nombre_empresa }}</div>
+                <div class="text-muted" style="font-size:13px;">
+                  RUT: <strong>{{ contacto_preseleccionado.cliente.rut }}</strong>
+                  {% if contacto_preseleccionado.cliente.telefono %}&nbsp;·&nbsp;{{ contacto_preseleccionado.cliente.telefono }}{% endif %}
+                  {% if contacto_preseleccionado.cliente.email %}&nbsp;·&nbsp;{{ contacto_preseleccionado.cliente.email }}{% endif %}
+                </div>
+                <div class="mt-1" style="font-size:13px;">
+                  <i class="bi bi-person me-1"></i><strong>{{ contacto_preseleccionado.nombre }}</strong>
+                  {% if contacto_preseleccionado.cargo %}<span class="text-muted"> — {{ contacto_preseleccionado.cargo }}</span>{% endif %}
+                  {% if contacto_preseleccionado.telefono_movil %}&nbsp;·&nbsp;<i class="bi bi-phone me-1"></i>{{ contacto_preseleccionado.telefono_movil }}{% endif %}
+                  {% if contacto_preseleccionado.email %}&nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ contacto_preseleccionado.email }}{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- ── GESTIÓN ──────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-diagram-3 me-2"></i>Gestión</div>
+            <div class="row g-3">
+              {% if contacto_preseleccionado %}
+              {# Contacto fijo: se muestra en el banner superior, se envía como hidden #}
+              <input type="hidden" name="contacto" value="{{ contacto_preseleccionado.pk }}">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.tipo.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.tipo }}
+                {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors.0 }}</div>{% endif %}
+              </div>
+              {% else %}
+              <div class="col-12 col-sm-7">
+                <div class="form-label-wrapper">
+                  {{ form.contacto.label_tag }}
+                </div>
+                {{ form.contacto }}
+                {% if form.contacto.errors %}<div class="field-error">{{ form.contacto.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-5">
+                <div class="form-label-wrapper">{{ form.tipo.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.tipo }}
+                {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors.0 }}</div>{% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if accion == 'crear' %}
+          <!-- ── NUEVA OPORTUNIDAD (opcional) ──────────────────────────────── -->
+          <div class="form-section p-0 overflow-hidden">
+            <!-- Header con toggle — claramente dentro del cuadro -->
+            <div class="d-flex align-items-center gap-3 px-3 py-2"
+                 style="cursor:pointer; background:#FFF0F0; border-bottom:1px solid #FFB3B3; border-radius:10px 10px 0 0;"
+                 onclick="document.getElementById('checkAbrirOportunidad').click()">
+              <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="checkAbrirOportunidad" name="abrir_oportunidad" value="1">
+              </div>
+              <span style="font-size:13px; font-weight:700; color:#D63031;">
+                <i class="bi bi-briefcase me-2"></i>¿Abrir nueva oportunidad?
+              </span>
+              <small class="text-muted fw-normal ms-auto" style="font-size:11px;">
+                <i class="bi bi-info-circle me-1"></i>Si esta gestión genera un negocio, registrálo aquí
+              </small>
+            </div>
+            <div id="campos-nueva-oportunidad" style="display:none;" class="row g-3 p-3 mt-0">
+              <div class="col-12 col-sm-6">
+                <label class="form-label fw-semibold">Etapa <span class="text-danger">*</span></label>
+                <select name="op_etapa" class="form-control" id="op_etapa">
+                  <option value="">-- Selecciona etapa --</option>
+                  {% for val, lbl in etapa_choices %}
+                    <option value="{{ val }}">{{ lbl }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label fw-semibold">Producto</label>
+                <select name="op_productos" class="form-control">
+                  <option value="">-- Selecciona producto --</option>
+                  {% for val, lbl in productos_choices %}
+                    <option value="{{ val }}">{{ lbl }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-sm-5">
+                <label class="form-label fw-semibold">Monto</label>
+                <input type="number" name="op_monto" class="form-control" step="0.01" min="0" placeholder="0">
+              </div>
+              <input type="hidden" name="op_moneda" value="CLP">
+              <div class="col-12 col-sm-4">
+                <label class="form-label fw-semibold">Probabilidad %</label>
+                <input type="number" name="op_probabilidad" class="form-control" min="0" max="100" placeholder="0">
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label fw-semibold">Nº Líneas</label>
+                <input type="number" name="op_lineas" class="form-control" min="0" placeholder="0">
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label fw-semibold">Fecha Cierre Estimada</label>
+                <input type="date" name="op_fecha_cierre_estimada" class="form-control">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Observaciones</label>
+                <textarea name="op_observaciones" class="form-control" rows="2" placeholder="Observaciones de la oportunidad"></textarea>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- ── FECHA Y DURACIÓN ──────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-clock me-2"></i>Fecha y Duración</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-7">
+                <div class="form-label-wrapper">{{ form.fecha_hora.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.fecha_hora }}
+                {% if form.fecha_hora.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.fecha_hora.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-5">
+                <div class="form-label-wrapper">{{ form.duracion_minutos.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-hourglass-split input-icon"></i>
+                  {{ form.duracion_minutos }}
+                </div>
+                {% if form.duracion_minutos.errors %}<div class="field-error">{{ form.duracion_minutos.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── RESULTADO ────────────────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-clipboard2-check me-2"></i>Resultado</div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.resultado.label_tag }}<span class="text-danger ms-1">*</span></div>
+                {{ form.resultado }}
+                {% if form.resultado.errors %}<div class="field-error"><i class="bi bi-exclamation-circle me-1"></i>{{ form.resultado.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">{{ form.productos_discutidos.label_tag }}</div>
+                {{ form.productos_discutidos }}
+                {% if form.productos_discutidos.errors %}<div class="field-error">{{ form.productos_discutidos.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── NOTAS Y SEGUIMIENTO ──────────────────────────────── -->
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-pencil-square me-2"></i>Notas y Seguimiento</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-label-wrapper">{{ form.nota_ejecutiva.label_tag }}</div>
+                {{ form.nota_ejecutiva }}
+                {% if form.nota_ejecutiva.errors %}<div class="field-error">{{ form.nota_ejecutiva.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-7">
+                <div class="form-label-wrapper">{{ form.accion_pendiente.label_tag }}</div>
+                <div class="input-icon-wrapper">
+                  <i class="bi bi-check2-square input-icon"></i>
+                  {{ form.accion_pendiente }}
+                </div>
+                {% if form.accion_pendiente.errors %}<div class="field-error">{{ form.accion_pendiente.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12 col-sm-5">
+                <div class="form-label-wrapper">{{ form.proximo_contacto_propuesto.label_tag }}</div>
+                {{ form.proximo_contacto_propuesto }}
+                {% if form.proximo_contacto_propuesto.errors %}<div class="field-error">{{ form.proximo_contacto_propuesto.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+              {% if accion == "crear" %}<i class="bi bi-telephone-plus me-2"></i>Registrar Gestión
+              {% else %}<i class="bi bi-check-circle me-2"></i>Actualizar Gestión{% endif %}
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'core/_form_styles.html' %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ── Toggle sección Nueva Oportunidad ────────────────────────────
+    const checkOp  = document.getElementById('checkAbrirOportunidad');
+    const camposOp = document.getElementById('campos-nueva-oportunidad');
+    if (checkOp && camposOp) {
+        checkOp.addEventListener('change', function() {
+            camposOp.style.display = this.checked ? '' : 'none';
+        });
+        const formulario = checkOp.closest('form');
+        if (formulario) {
+            formulario.addEventListener('submit', function(e) {
+                if (checkOp.checked) {
+                    const etapaSelect = document.getElementById('op_etapa');
+                    if (etapaSelect && !etapaSelect.value) {
+                        e.preventDefault();
+                        etapaSelect.style.borderColor = '#dc3545';
+                        etapaSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        etapaSelect.focus();
+                    }
+                }
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

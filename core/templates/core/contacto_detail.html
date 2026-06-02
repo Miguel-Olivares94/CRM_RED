@@ -1,0 +1,286 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ contacto.nombre }} - CRM Comercial{% endblock %}
+{% block page_title %}{{ contacto.nombre }}{% endblock %}
+{% block breadcrumb_item %}Detalle Contacto{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="font-size: 24px; font-weight: 700; color: #333; margin-bottom: 5px;">
+            <i class="bi bi-person-fill me-2"></i>{{ contacto.nombre }}
+        </h2>
+        <p style="color: #6c757d;">{{ contacto.cargo|default:"Sin cargo" }} — {{ contacto.cliente.nombre_empresa }}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button id="btn-contacto-ia" class="btn btn-primary" onclick="cargarPerfilContacto()">
+            <i class="bi bi-stars me-1"></i>Preparar contacto
+        </button>
+        <a href="{% url 'core:contacto_update' contacto.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-2"></i>Editar
+        </a>
+        {% if user_role == 'admin' or user_role == 'superadmin' %}
+        <a href="{% url 'core:contacto_delete' contacto.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash me-2"></i>Eliminar
+        </a>
+        {% endif %}
+        <a href="{% url 'core:contacto_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Info principal -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person me-2"></i>Información del Contacto</div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted" style="width:40%">Cliente</td>
+                        <td>
+                            <a href="{% url 'core:cliente_detail' contacto.cliente.pk %}">
+                                <strong>{{ contacto.cliente.nombre_empresa }}</strong>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Cargo</td>
+                        <td>{{ contacto.cargo|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Rol</td>
+                        <td>
+                            {% if contacto.rol == 'DECISOR' %}
+                                <span class="badge bg-danger">Decisor</span>
+                            {% elif contacto.rol == 'INFLUENCIADOR' %}
+                                <span class="badge bg-warning">Influenciador</span>
+                            {% elif contacto.rol == 'USUARIO' %}
+                                <span class="badge bg-info">Usuario</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Otro</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Estado</td>
+                        <td>
+                            {% if contacto.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+        </div>
+
+        <!-- Datos de contacto -->
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-telephone me-2"></i>Datos de Contacto</div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted" style="width:40%">Email</td>
+                        <td>
+                            {% if contacto.email %}
+                                <a href="mailto:{{ contacto.email }}">{{ contacto.email }}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Móvil</td>
+                        <td>
+                            {% if contacto.telefono_movil %}
+                                <a href="https://wa.me/{{ contacto.telefono_movil }}" target="_blank">
+                                    <i class="bi bi-whatsapp me-1 text-success"></i>{{ contacto.telefono_movil }}
+                                </a>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Fijo</td>
+                        <td>{{ contacto.telefono_fijo|default:"—" }}</td>
+                    </tr>
+                </table>
+
+                {% if contacto.email %}
+                <div class="d-flex gap-2 mt-3">
+                    <a href="mailto:{{ contacto.email }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-envelope me-1"></i>Email
+                    </a>
+                    <a href="https://teams.microsoft.com/l/chat/0/0?users={{ contacto.email }}" target="_blank" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-camera-video me-1"></i>Teams
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Oportunidades y gestiones -->
+    <div class="col-lg-7">
+        <!-- Oportunidades activas del cliente -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-funnel me-2"></i>Oportunidades Activas del Cliente</div>
+            <div class="card-body">
+                {% if oportunidades %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Oportunidad</th>
+                                    <th>Etapa</th>
+                                    <th>Líneas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for op in oportunidades %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'core:oportunidad_detail' op.pk %}">
+                                            {{ op.productos|default:"Sin descripción"|truncatewords:4 }}
+                                        </a>
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ op.get_etapa_display }}</span></td>
+                                    <td>{{ op.lineas|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">Sin oportunidades activas</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Últimas gestiones -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-telephone me-2"></i>Últimas Gestiones</span>
+                <a href="{% url 'core:llamada_create' %}?contacto={{ contacto.pk }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Registrar
+                </a>
+            </div>
+            <div class="card-body">
+                {% if llamadas %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Resultado</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for llamada in llamadas %}
+                                <tr>
+                                    <td>{{ llamada.fecha_hora|date:"d/m/Y" }}</td>
+                                    <td>{{ llamada.get_tipo_display }}</td>
+                                    <td>
+                                        {% if llamada.resultado == 'EXITOSA' %}
+                                            <span class="badge bg-success">Exitosa</span>
+                                        {% elif llamada.resultado == 'FALLIDA' %}
+                                            <span class="badge bg-danger">Fallida</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{{ llamada.get_resultado_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ llamada.nota_ejecutiva|truncatewords:5|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">Sin gestiones registradas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel IA -->
+<div id="panel-contacto-ia" class="row mt-3" style="display:none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between" style="background:#E8000D;color:white;">
+                <span><i class="bi bi-stars me-2"></i>Asistente IA — Preparación del contacto: <strong>{{ contacto.nombre }}</strong></span>
+                <button class="btn btn-sm btn-light py-0" onclick="document.getElementById('panel-contacto-ia').style.display='none'">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="body-contacto-ia" class="card-body">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                    <p class="mt-2 text-muted">Analizando perfil...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CONTACTO_ID = {{ contacto.pk }};
+
+function cargarPerfilContacto() {
+    const panel = document.getElementById('panel-contacto-ia');
+    const body  = document.getElementById('body-contacto-ia');
+    const btn   = document.getElementById('btn-contacto-ia');
+
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    body.innerHTML = `<div class="text-center py-3">
+        <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+        <p class="mt-2 text-muted mb-0">Analizando perfil del contacto...</p>
+    </div>`;
+    btn.disabled = true;
+
+    fetch(`/api/v1/ventas/preparar-contacto/${CONTACTO_ID}/`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) { body.innerHTML = `<p class="text-danger">${d.error}</p>`; return; }
+            const temas = (d.temas_de_interes || [])
+                .map(t => `<span class="badge me-1 mb-1" style="background:#E8000D;">${t}</span>`).join('');
+            body.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background:#FFF0F0;border-left:3px solid #E8000D;">
+                        <p class="fw-bold mb-1" style="color:#E8000D;"><i class="bi bi-person-circle me-1"></i>Perfil del contacto</p>
+                        <p class="mb-0">${d.perfil_contacto}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background:#FFF0F0;border-left:3px solid #B80000;">
+                        <p class="fw-bold mb-1" style="color:#B80000;"><i class="bi bi-chat-dots me-1"></i>Cómo abordarle</p>
+                        <p class="mb-0">${d.como_abordar}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded" style="background:#fff;border:1px solid #FFB3B3;">
+                        <p class="fw-bold mb-2"><i class="bi bi-lightbulb me-1 text-warning"></i>Temas de interés</p>
+                        <div>${temas || '<span class="text-muted">No identificados</span>'}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded" style="background:#fff;border:1px solid #FFB3B3;">
+                        <p class="fw-bold mb-1"><i class="bi bi-arrow-right-circle me-1" style="color:#E8000D;"></i>Próximo paso</p>
+                        <p class="mb-0">${d.proximo_paso}</p>
+                    </div>
+                </div>
+            </div>`;
+        })
+        .catch(() => { body.innerHTML = '<p class="text-danger">Error al conectar con el servicio de IA.</p>'; })
+        .finally(() => { btn.disabled = false; });
+}
+</script>
+{% endblock %}
