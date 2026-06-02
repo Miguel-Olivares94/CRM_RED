@@ -9,7 +9,15 @@ import os
 
 import anthropic
 
-MODEL = "claude-opus-4-7"
+MODEL = "claude-opus-4-5"
+
+
+def _get_client() -> anthropic.Anthropic:
+    """Devuelve un cliente Anthropic. Lanza ValueError si falta la API key."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY no está configurada en las variables de entorno")
+    return anthropic.Anthropic(api_key=api_key)
 
 # ──────────────────────────────────────────────────────────────
 # Sistema de prompts especializados (cacheables)
@@ -102,9 +110,8 @@ Observaciones: {(oportunidad.observaciones or 'Sin observaciones')[:200]}
 def sugerir_estrategia_venta(oportunidad, gestiones, seguimientos) -> dict:
     """
     Endpoint Vendedor: analiza el historial y devuelve script + objeciones + próximo paso.
-    Usa streaming para evitar timeouts en respuestas largas.
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = _get_client()
     contexto = _build_contexto_oportunidad(oportunidad, gestiones, seguimientos)
 
     prompt_usuario = f"""\
@@ -125,7 +132,10 @@ Considera la etapa actual, el historial de contactos y el tiempo sin contacto.
     texto = next(
         (b.text for b in mensaje.content if b.type == "text"), "{}"
     )
-    return json.loads(texto)
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
 
 
 SYSTEM_CONTACTO = """\
@@ -149,7 +159,7 @@ def preparar_contacto_vendedor(contacto, llamadas, oportunidades) -> dict:
     """
     Endpoint Contacto: analiza el perfil del contacto y cómo abordarle.
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = _get_client()
 
     lineas_llamadas = []
     for g in llamadas:
@@ -205,15 +215,17 @@ Considera su cargo, rol en la decisión y el historial de gestiones.
     )
 
     texto = next((b.text for b in mensaje.content if b.type == "text"), "{}")
-    return json.loads(texto)
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
 
 
 def auditar_oportunidad(oportunidad, gestiones, seguimientos) -> dict:
     """
     Endpoint Admin: evalúa salud de la venta y detecta riesgos objetivos.
-    Usa streaming para evitar timeouts en respuestas largas.
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = _get_client()
     contexto = _build_contexto_oportunidad(oportunidad, gestiones, seguimientos)
 
     prompt_usuario = f"""\
@@ -240,4 +252,7 @@ Sé específico y basa cada observación en los datos provistos.
     texto = next(
         (b.text for b in mensaje.content if b.type == "text"), "{}"
     )
-    return json.loads(texto)
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
