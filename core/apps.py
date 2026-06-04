@@ -32,3 +32,6 @@ class CoreConfig(AppConfig):
         admin.site.site_title = "CRM Claro"
         admin.site.index_title = "Bienvenido a la Administración CRM"
 
+        # Registrar signals
+        import core.signals  # noqa: F401
+
