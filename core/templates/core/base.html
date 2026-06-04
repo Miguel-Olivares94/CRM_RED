@@ -139,6 +139,16 @@
               <i class="nav-icon bi bi-funnel"></i><p>Oportunidades</p>
             </a>
           </li>
+          <li class="nav-item">
+            <a href="{% url 'core:meta_ventas_list' %}" class="nav-link {% if 'meta' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-trophy"></i><p>Metas de Ventas</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'core:comision_list' %}" class="nav-link {% if 'comision' in request.path %}active{% endif %}">
+              <i class="nav-icon bi bi-cash-coin"></i><p>Comisiones</p>
+            </a>
+          </li>
 
           <li class="nav-header">CONFIGURACIÓN</li>
           {% if puede_asignar_equipo %}
