@@ -6,6 +6,7 @@ Expone dos prompts especializados:
 """
 import json
 import os
+import re
 
 import anthropic
 
@@ -18,6 +19,40 @@ def _get_client() -> anthropic.Anthropic:
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY no está configurada en las variables de entorno")
     return anthropic.Anthropic(api_key=api_key)
+
+
+def _extraer_json(mensaje) -> dict:
+    """Extrae y parsea el JSON de la respuesta de Anthropic."""
+    texto = ""
+    for b in mensaje.content:
+        t = getattr(b, "text", None)
+        if t and t.strip():
+            texto = t.strip()
+            break
+
+    if not texto:
+        debug_info = {
+            "stop_reason": mensaje.stop_reason,
+            "content_types": [type(b).__name__ for b in mensaje.content],
+            "content_repr": [repr(b) for b in mensaje.content],
+        }
+        raise ValueError(f"La IA devolvió respuesta vacía. Debug: {debug_info}")
+
+    # Intentar parsear directamente
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError:
+        pass
+
+    # Buscar bloque JSON dentro del texto
+    match = re.search(r'\{.*\}', texto, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"La IA devolvió texto no JSON: {texto[:500]}")
 
 # ──────────────────────────────────────────────────────────────
 # Sistema de prompts especializados (cacheables)
@@ -128,14 +163,7 @@ Considera la etapa actual, el historial de contactos y el tiempo sin contacto.
         system=SYSTEM_VENDEDOR,
         messages=[{"role": "user", "content": prompt_usuario}],
     )
-
-    texto = next(
-        (b.text for b in mensaje.content if b.type == "text"), "{}"
-    )
-    try:
-        return json.loads(texto)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
+    return _extraer_json(mensaje)
 
 
 SYSTEM_CONTACTO = """\
@@ -213,12 +241,7 @@ Considera su cargo, rol en la decisión y el historial de gestiones.
         system=SYSTEM_CONTACTO,
         messages=[{"role": "user", "content": prompt_usuario}],
     )
-
-    texto = next((b.text for b in mensaje.content if b.type == "text"), "{}")
-    try:
-        return json.loads(texto)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
+    return _extraer_json(mensaje)
 
 
 def auditar_oportunidad(oportunidad, gestiones, seguimientos) -> dict:
@@ -248,11 +271,4 @@ Sé específico y basa cada observación en los datos provistos.
         system=SYSTEM_ADMIN,
         messages=[{"role": "user", "content": prompt_usuario}],
     )
-
-    texto = next(
-        (b.text for b in mensaje.content if b.type == "text"), "{}"
-    )
-    try:
-        return json.loads(texto)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"La IA devolvió una respuesta no válida: {exc}") from exc
+    return _extraer_json(mensaje)
