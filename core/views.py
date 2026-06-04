@@ -1196,6 +1196,19 @@ class MetaVentasCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
+class MetaVentasUpdateView(LoginRequiredMixin, UpdateView):
+    model = MetaVentas
+    form_class = MetaVentasForm
+    template_name = "core/meta_ventas_form.html"
+    success_url = reverse_lazy("core:meta_ventas_list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["titulo"] = "Editar Meta de Ventas"
+        context["accion"] = "editar"
+        return context
+
+
 # ==================== COMISIÓN ====================
 class ComisionListView(LoginRequiredMixin, ComisionQuerysetFilterMixin, ListView):
     model = Comision

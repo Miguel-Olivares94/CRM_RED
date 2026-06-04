@@ -14,7 +14,7 @@ from .views import (
     # Llamada
     LlamadaListView, LlamadaCreateView, LlamadaDetailView, LlamadaUpdateView, LlamadaDeleteView,
     # MetaVentas
-    MetaVentasListView, MetaVentasCreateView,
+    MetaVentasListView, MetaVentasCreateView, MetaVentasUpdateView,
     # Comisión
     ComisionListView, ComisionDetailView,
     # Seguimiento
@@ -77,6 +77,7 @@ urlpatterns = [
     # Metas de Ventas
     path("metas/", MetaVentasListView.as_view(), name="meta_ventas_list"),
     path("metas/nueva/", MetaVentasCreateView.as_view(), name="meta_ventas_create"),
+    path("metas/<int:pk>/editar/", MetaVentasUpdateView.as_view(), name="meta_ventas_update"),
     
     # Comisiones
     path("comisiones/", ComisionListView.as_view(), name="comision_list"),
