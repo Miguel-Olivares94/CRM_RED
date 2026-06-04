@@ -9,7 +9,7 @@ import os
 
 import anthropic
 
-MODEL = "claude-opus-4-5"
+MODEL = "claude-3-5-haiku-20241022"
 
 
 def _get_client() -> anthropic.Anthropic:
