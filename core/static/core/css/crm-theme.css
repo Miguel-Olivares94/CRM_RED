@@ -1,28 +1,35 @@
 /* ══════════════════════════════════════════════════════════
    CRM CLARO CHILE — THEME OVERRIDE PARA ADMINLTE 4
-   Paleta: #E8000D (rojo principal) · #B80000 (oscuro)
-          #FFF0F0 (fondo claro)
+   Paleta: #1565C0 (azul principal) · #0D47A1 (oscuro)
+          #E3F2FD (fondo claro)
    ══════════════════════════════════════════════════════════ */
 
 :root {
-  --crm-red:        #E8000D;
-  --crm-red-dark:   #B80000;
-  --crm-red-mid:    #FF2020;
-  --crm-red-light:  #FFF0F0;
-  --crm-red-soft:   #FFB3B3;
+  --crm-blue:        #1565C0;
+  --crm-blue-dark:   #0D47A1;
+  --crm-blue-mid:    #1976D2;
+  --crm-blue-light:  #E3F2FD;
+  --crm-blue-soft:   #90CAF9;
 
-  --bs-primary:        #E8000D;
-  --bs-primary-rgb:    232, 0, 13;
-  --bs-danger:         #B80000;
-  --bs-danger-rgb:     184, 0, 0;
+  --bs-primary:        #1565C0;
+  --bs-primary-rgb:    21, 101, 192;
+  --bs-danger:         #0D47A1;
+  --bs-danger-rgb:     13, 71, 161;
   --bs-body-bg:        #f8f9fa;
+
+  /* Alias para compatibilidad con código que usa --crm-red */
+  --crm-red:        #1565C0;
+  --crm-red-dark:   #0D47A1;
+  --crm-red-mid:    #1976D2;
+  --crm-red-light:  #E3F2FD;
+  --crm-red-soft:   #90CAF9;
 }
 
 /* ── Topbar ─────────────────────────────────────────────── */
 .crm-topbar {
-  background: var(--crm-red) !important;
+  background: var(--crm-blue) !important;
   border-bottom: none !important;
-  box-shadow: 0 2px 10px rgba(232, 0, 13, 0.35);
+  box-shadow: 0 2px 10px rgba(21, 101, 192, 0.35);
 }
 .crm-topbar .nav-link {
   color: rgba(255, 255, 255, 0.9) !important;
@@ -34,7 +41,7 @@
 /* ── Sidebar ─────────────────────────────────────────────── */
 .crm-sidebar,
 .app-sidebar {
-  background-color: var(--crm-red) !important;
+  background-color: var(--crm-blue-dark) !important;
 }
 
 .crm-sidebar .nav-header {
@@ -56,8 +63,8 @@
 .crm-sidebar .nav-link:hover,
 .crm-sidebar .nav-link.active {
   color: #fff !important;
-  background: transparent !important;
-  border-left-color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-left-color: #90CAF9 !important;
   padding-left: 20px !important;
 }
 
@@ -70,13 +77,13 @@
 
 /* ── Brand ──────────────────────────────────────────────── */
 .crm-brand {
-  background-color: var(--crm-red-dark) !important;
+  background-color: var(--crm-blue-dark) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* ── Footer ─────────────────────────────────────────────── */
 .crm-footer {
-  background: var(--crm-red) !important;
+  background: var(--crm-blue) !important;
   color: rgba(255, 255, 255, 0.9) !important;
   border-top: none !important;
 }
@@ -85,17 +92,17 @@
 /* ── Cards ──────────────────────────────────────────────── */
 .card {
   border: none;
-  border-left: 4px solid var(--crm-red);
+  border-left: 4px solid var(--crm-blue);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 .card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(21, 101, 192, 0.15);
   transform: translateY(-2px);
 }
 .card-header {
-  background: var(--crm-red) !important;
+  background: var(--crm-blue) !important;
   color: #fff !important;
   border-bottom: none !important;
   border-radius: 8px 8px 0 0 !important;
@@ -106,7 +113,7 @@
 
 /* ── Tablas ─────────────────────────────────────────────── */
 .table thead th {
-  background: var(--crm-red) !important;
+  background: var(--crm-blue) !important;
   color: #fff !important;
   border: none !important;
   font-size: 11px;
@@ -115,49 +122,49 @@
   padding: 10px;
 }
 .table td { vertical-align: middle; font-size: 13px; }
-.table tbody tr:hover { background-color: var(--crm-red-light); }
+.table tbody tr:hover { background-color: var(--crm-blue-light); }
 
 /* ── Botones ─────────────────────────────────────────────── */
 .btn-primary {
-  background-color: var(--crm-red) !important;
-  border-color: var(--crm-red) !important;
+  background-color: var(--crm-blue) !important;
+  border-color: var(--crm-blue) !important;
 }
 .btn-primary:hover, .btn-primary:focus {
-  background-color: var(--crm-red-dark) !important;
-  border-color: var(--crm-red-dark) !important;
+  background-color: var(--crm-blue-dark) !important;
+  border-color: var(--crm-blue-dark) !important;
 }
 .btn-outline-primary {
-  color: var(--crm-red) !important;
-  border-color: var(--crm-red) !important;
+  color: var(--crm-blue) !important;
+  border-color: var(--crm-blue) !important;
 }
 .btn-outline-primary:hover {
-  background-color: var(--crm-red) !important;
+  background-color: var(--crm-blue) !important;
   color: #fff !important;
 }
 .btn-danger {
-  background-color: var(--crm-red-dark) !important;
-  border-color: var(--crm-red-dark) !important;
+  background-color: #C62828 !important;
+  border-color: #C62828 !important;
 }
 
 /* ── Formularios ────────────────────────────────────────── */
 .form-control, .form-select {
   border-radius: 8px;
-  border: 2px solid var(--crm-red-soft);
-  background-color: var(--crm-red-light);
+  border: 2px solid var(--crm-blue-soft);
+  background-color: var(--crm-blue-light);
   font-size: 14px;
   transition: all 0.3s ease;
 }
 .form-control:focus, .form-select:focus {
-  border-color: var(--crm-red);
+  border-color: var(--crm-blue);
   background-color: #fff;
-  box-shadow: 0 0 0 3px rgba(232, 0, 13, 0.1);
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.15);
 }
 .form-control:hover, .form-select:hover {
-  border-color: var(--crm-red);
+  border-color: var(--crm-blue-mid);
 }
 .form-check-input:checked {
-  background-color: var(--crm-red);
-  border-color: var(--crm-red);
+  background-color: var(--crm-blue);
+  border-color: var(--crm-blue);
 }
 
 /* ── Badges ─────────────────────────────────────────────── */
@@ -178,13 +185,13 @@
 
 /* ── KPI Cards modernos ─────────────────────────────────── */
 .kpi-modern {
-  border-left: 4px solid var(--crm-red) !important;
+  border-left: 4px solid var(--crm-blue) !important;
   border-radius: 10px;
   overflow: hidden;
   transition: box-shadow 0.25s, transform 0.25s;
 }
 .kpi-modern:hover {
-  box-shadow: 0 6px 20px rgba(232, 0, 13, 0.18) !important;
+  box-shadow: 0 6px 20px rgba(21, 101, 192, 0.2) !important;
   transform: translateY(-3px);
 }
 .kpi-icon-wrap {
@@ -216,44 +223,44 @@
 .kpi-footer-link {
   display: block;
   padding: 7px 16px;
-  background: rgba(232, 0, 13, 0.05);
-  border-top: 1px solid rgba(232, 0, 13, 0.08);
+  background: rgba(21, 101, 192, 0.05);
+  border-top: 1px solid rgba(21, 101, 192, 0.1);
   font-size: 12px;
-  color: var(--crm-red);
+  color: var(--crm-blue);
   text-decoration: none;
   font-weight: 500;
   transition: background 0.2s;
 }
 .kpi-footer-link:hover {
-  background: rgba(232, 0, 13, 0.1);
-  color: var(--crm-red-dark);
+  background: rgba(21, 101, 192, 0.12);
+  color: var(--crm-blue-dark);
 }
 
 /* ── Alertas ─────────────────────────────────────────────── */
 .alert-success {
-  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
-  border-left: 4px solid var(--crm-red);
+  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  border-left: 4px solid #2E7D32;
   color: #333;
 }
 .alert-danger {
-  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
-  border-left: 4px solid var(--crm-red-mid);
+  background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+  border-left: 4px solid #C62828;
   color: #333;
 }
 .alert-warning {
-  background: linear-gradient(135deg, #FFF0F0, #FFE8E8);
-  border-left: 4px solid var(--crm-red-dark);
+  background: linear-gradient(135deg, #FFF8E1, #FFECB3);
+  border-left: 4px solid #F57F17;
   color: #333;
 }
 .alert-info {
-  background: linear-gradient(135deg, #FFE8E8, #FFB3B3);
-  border-left: 4px solid var(--crm-red-dark);
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  border-left: 4px solid var(--crm-blue);
   color: #333;
 }
 
 /* ── Breadcrumb ──────────────────────────────────────────── */
-.breadcrumb-item a { color: var(--crm-red); text-decoration: none; }
-.breadcrumb-item a:hover { color: var(--crm-red-dark); }
+.breadcrumb-item a { color: var(--crm-blue); text-decoration: none; }
+.breadcrumb-item a:hover { color: var(--crm-blue-dark); }
 
 /* ── KPI Cards ───────────────────────────────────────────── */
 .kpi-card { text-align: center; padding: 20px 15px; }
