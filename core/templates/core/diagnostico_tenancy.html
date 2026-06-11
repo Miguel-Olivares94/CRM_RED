@@ -1,0 +1,98 @@
+{% extends "core/base.html" %}
+
+{% block title %}Diagnóstico Multi-Tenancy{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold mb-0">
+      🔍 Diagnóstico Multi-Tenancy
+    </h2>
+    <div class="d-flex gap-2">
+      {% if not fix %}
+        <a href="?fix=1" class="btn btn-warning btn-sm">
+          ⚙ Corregir registros con empresa=NULL
+        </a>
+      {% endif %}
+      <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        ← Volver al Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Estado global -->
+  <div class="alert
+    {% if estado_global == 'OK' %}alert-success
+    {% elif estado_global == 'ADVERTENCIAS' %}alert-warning
+    {% else %}alert-danger{% endif %}
+    d-flex align-items-center gap-2 mb-4"
+    role="alert">
+    {% if estado_global == 'OK' %}
+      <span class="fs-4">✅</span>
+      <div><strong>Estado: OK</strong> — Sistema listo. Multi-tenancy operativo.</div>
+    {% elif estado_global == 'ADVERTENCIAS' %}
+      <span class="fs-4">⚠️</span>
+      <div><strong>Estado: ADVERTENCIAS</strong> — Revisar puntos marcados en amarillo.</div>
+    {% else %}
+      <span class="fs-4">❌</span>
+      <div><strong>Estado: ERROR CRÍTICO</strong> — Acción inmediata requerida.</div>
+    {% endif %}
+  </div>
+
+  <!-- Resultados detallados -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark text-white fw-semibold">
+      Resultados del diagnóstico
+      <small class="ms-2 text-white-50">{{ resultados|length }} verificaciones</small>
+    </div>
+    <ul class="list-group list-group-flush">
+      {% for tipo, mensaje in resultados %}
+        <li class="list-group-item d-flex align-items-start gap-3 py-2">
+          {% if tipo == 'ok' %}
+            <span class="text-success mt-1">✓</span>
+            <span class="text-dark">{{ mensaje }}</span>
+          {% elif tipo == 'warn' %}
+            <span class="text-warning mt-1">⚠</span>
+            <span class="text-dark">{{ mensaje }}</span>
+          {% else %}
+            <span class="text-danger mt-1">✗</span>
+            <span class="text-danger fw-semibold">{{ mensaje }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Guía de corrección si hay advertencias -->
+  {% if estado_global != 'OK' %}
+  <div class="card mt-4 border-warning">
+    <div class="card-header bg-warning text-dark fw-semibold">
+      ¿Cómo corregir registros sin empresa?
+    </div>
+    <div class="card-body">
+      <ol class="mb-0">
+        <li class="mb-1">Crear empresa <strong>"Claro Chile"</strong> en
+          <a href="/admin/core/empresa/add/" target="_blank">Django Admin → Empresa → Agregar</a>
+        </li>
+        <li class="mb-1">Asignar esa empresa al perfil de cada usuario en
+          <a href="/admin/core/userprofile/" target="_blank">Django Admin → UserProfile</a>
+        </li>
+        <li class="mb-1">Volver a esta página y hacer clic en
+          <a href="?fix=1" class="text-warning fw-semibold">⚙ Corregir registros con empresa=NULL</a>
+          (auto-asigna empresa recuperando del usuario asociado)
+        </li>
+        <li>Recargar esta página para confirmar que todos los contadores están en 0</li>
+      </ol>
+    </div>
+  </div>
+  {% endif %}
+
+  <p class="text-muted mt-3 small">
+    Generado: {% now "d/m/Y H:i:s" %} UTC &nbsp;|&nbsp; Solo visible por superusuarios &nbsp;|&nbsp;
+    URL: <code>/admin/validar-tenancy/</code> &nbsp;|&nbsp;
+    Management command: <code>python manage.py validar_tenancy [--fix]</code>
+  </p>
+
+</div>
+{% endblock %}

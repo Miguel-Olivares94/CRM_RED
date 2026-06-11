@@ -1429,6 +1429,172 @@ def api_provincia(request):
     return JsonResponse({'provincia': provincia})
 
 
+# ==================== DIAGNÓSTICO MULTI-TENANCY (solo superadmin) ====================
+class DiagnosticoTenancyView(LoginRequiredMixin, View):
+    """
+    Vista de diagnóstico multi-tenancy. Solo accesible por superusuarios.
+    URL: /admin/validar-tenancy/
+    Acepta ?fix=1 para corrección automática de registros con empresa=NULL.
+    """
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden("Solo superusuarios.")
+
+        from .models import Empresa, MetaVentas, Comision, UserProfile
+        from django.contrib.auth import get_user_model
+        from django.db.migrations.recorder import MigrationRecorder
+
+        fix = request.GET.get('fix') == '1'
+        User = get_user_model()
+        resultados = []
+
+        def ok(msg):
+            resultados.append(('ok', msg))
+
+        def warn(msg):
+            resultados.append(('warn', msg))
+
+        def error(msg):
+            resultados.append(('error', msg))
+
+        # 1. Migración 0010
+        aplicada = MigrationRecorder.Migration.objects.filter(
+            app='core', name='0010_add_empresa_to_metaventas_comision'
+        ).exists()
+        if aplicada:
+            ok("Migración 0010 aplicada correctamente en la BD")
+        else:
+            error("Migración 0010 NO aplicada — ejecutar migrate")
+
+        # 2. Empresas
+        empresas = list(Empresa.objects.all())
+        if empresas:
+            for emp in empresas:
+                ok(
+                    f"Empresa [{emp.id}] «{emp.nombre}» — "
+                    f"{UserProfile.objects.filter(empresa=emp).count()} usuarios, "
+                    f"{Cliente.objects.filter(empresa=emp).count()} clientes, "
+                    f"{MetaVentas.objects.filter(empresa=emp).count()} metas, "
+                    f"{Comision.objects.filter(empresa=emp).count()} comisiones"
+                )
+        else:
+            error("No hay empresas registradas — crear desde Django Admin")
+
+        # 3. Perfiles sin empresa
+        sin_empresa = UserProfile.objects.filter(empresa__isnull=True)
+        if sin_empresa.exists():
+            for p in sin_empresa:
+                warn(f"Usuario sin empresa: {p.user.email} (id={p.user.id})")
+        else:
+            ok("Todos los usuarios tienen empresa asignada")
+
+        # 4. Usuarios sin perfil
+        sin_perfil = User.objects.filter(is_active=True, profile__isnull=True)
+        if sin_perfil.exists():
+            for u in sin_perfil:
+                warn(f"Usuario sin UserProfile: {u.email} (id={u.id})")
+        else:
+            ok("Todos los usuarios activos tienen UserProfile")
+
+        # 5. Clientes sin empresa
+        clientes_null = Cliente.objects.filter(empresa__isnull=True)
+        total_c = Cliente.objects.count()
+        if clientes_null.exists():
+            if fix:
+                corregidos = self._fix_clientes(clientes_null)
+                warn(f"{clientes_null.count()} clientes sin empresa → {corregidos} corregidos automáticamente (de {total_c} total)")
+            else:
+                warn(f"{clientes_null.count()} / {total_c} clientes sin empresa — agregar ?fix=1 para corregir")
+        else:
+            ok(f"Todos los clientes ({total_c}) tienen empresa")
+
+        # 6. MetaVentas sin empresa
+        metas_null = MetaVentas.objects.filter(empresa__isnull=True)
+        total_m = MetaVentas.objects.count()
+        if metas_null.exists():
+            if fix:
+                corregidos = self._fix_metas(metas_null)
+                warn(f"{metas_null.count()} metas sin empresa → {corregidos} corregidas automáticamente (de {total_m} total)")
+            else:
+                warn(f"{metas_null.count()} / {total_m} metas sin empresa — agregar ?fix=1 para corregir")
+        else:
+            ok(f"Todas las metas ({total_m}) tienen empresa")
+
+        # 7. Comisiones sin empresa
+        comisiones_null = Comision.objects.filter(empresa__isnull=True)
+        total_co = Comision.objects.count()
+        if comisiones_null.exists():
+            if fix:
+                corregidos = self._fix_comisiones(comisiones_null)
+                warn(f"{comisiones_null.count()} comisiones sin empresa → {corregidos} corregidas automáticamente (de {total_co} total)")
+            else:
+                warn(f"{comisiones_null.count()} / {total_co} comisiones sin empresa — agregar ?fix=1 para corregir")
+        else:
+            ok(f"Todas las comisiones ({total_co}) tienen empresa")
+
+        estado_global = "ERROR" if any(t == 'error' for t, _ in resultados) else \
+                        "ADVERTENCIAS" if any(t == 'warn' for t, _ in resultados) else "OK"
+
+        html = self._render_html(resultados, estado_global, fix)
+        return render(request, 'core/diagnostico_tenancy.html', {
+            'resultados': resultados,
+            'estado_global': estado_global,
+            'fix': fix,
+        })
+
+    @staticmethod
+    def _fix_clientes(queryset):
+        corregidos = 0
+        for c in queryset:
+            for fuente in [c.usuario_asignado, c.creado_por]:
+                if fuente:
+                    try:
+                        empresa = fuente.profile.empresa
+                        if empresa:
+                            c.empresa = empresa
+                            c.save(update_fields=['empresa'])
+                            corregidos += 1
+                            break
+                    except Exception:
+                        continue
+        return corregidos
+
+    @staticmethod
+    def _fix_metas(queryset):
+        corregidos = 0
+        for m in queryset:
+            if m.usuario:
+                try:
+                    empresa = m.usuario.profile.empresa
+                    if empresa:
+                        m.empresa = empresa
+                        m.save(update_fields=['empresa'])
+                        corregidos += 1
+                except Exception:
+                    pass
+        return corregidos
+
+    @staticmethod
+    def _fix_comisiones(queryset):
+        corregidos = 0
+        for c in queryset:
+            if c.usuario:
+                try:
+                    empresa = c.usuario.profile.empresa
+                    if empresa:
+                        c.empresa = empresa
+                        c.save(update_fields=['empresa'])
+                        corregidos += 1
+                except Exception:
+                    pass
+        return corregidos
+
+    @staticmethod
+    def _render_html(resultados, estado, fix):
+        pass  # Se renderiza por template
+
+
 # ==================== CLIENTES PROSPECTADOS ====================
 class ClientesProspectadosView(LoginRequiredMixin, TemplateView):
     """Vista para Admin y Manager: muestra clientes nuevos creados manualmente por vendedores."""
