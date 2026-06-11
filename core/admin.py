@@ -2,10 +2,26 @@ from django.contrib import admin
 from django.utils.html import format_html
 from import_export.admin import ImportExportModelAdmin
 from .models import (
-    Cliente, Contacto, Oportunidad, Llamada,
+    Empresa, Cliente, Contacto, Oportunidad, Llamada,
     MetaVentas, Comision, Seguimiento, UserProfile
 )
 from .resources import ClienteResource, OportunidadResource
+
+
+@admin.register(Empresa)
+class EmpresaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'rut', 'dominio', 'activo', 'total_usuarios', 'total_clientes')
+    search_fields = ('nombre', 'rut', 'dominio')
+    list_filter = ('activo',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    def total_usuarios(self, obj):
+        return obj.usuarios.count()
+    total_usuarios.short_description = 'Usuarios'
+
+    def total_clientes(self, obj):
+        return obj.clientes.count()
+    total_clientes.short_description = 'Clientes'
 
 
 @admin.register(Cliente)
@@ -285,14 +301,14 @@ class SeguimientoAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("get_full_name", "role", "supervisor", "get_subordinados_count")
+    list_display = ("get_full_name", "empresa", "role", "supervisor", "get_subordinados_count")
     search_fields = ("user__email", "user__first_name", "user__last_name")
-    list_filter = ("role", "supervisor")
+    list_filter = ("role", "empresa", "supervisor")
     readonly_fields = ("created_at", "updated_at")
     
     fieldsets = (
         ("Usuario", {
-            "fields": ("user", "role")
+            "fields": ("user", "role", "empresa")
         }),
         ("Jerarquía", {
             "fields": ("supervisor",)

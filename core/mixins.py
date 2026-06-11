@@ -9,6 +9,36 @@ from django.db.models import Q
 from .models import Cliente
 
 
+def get_empresa_from_user(user):
+    """Retorna la Empresa (tenant) del usuario o None si es superadmin."""
+    if user.is_superuser:
+        return None
+    try:
+        return user.profile.empresa
+    except Exception:
+        return None
+
+
+class TenantFilterMixin:
+    """
+    Mixin base que restringe el queryset al tenant (Empresa) del usuario.
+    - Superadmin: ve todo (sin filtro)
+    - Cualquier otro usuario: solo ve datos de su empresa
+    Debe usarse ANTES de los mixins de rol (ClienteQuerysetFilterMixin, etc.)
+    ya que estos afinan aún más el filtro.
+    El campo `tenant_field` indica la ruta ORM hasta el campo `empresa`.
+    """
+    tenant_field = 'empresa'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        empresa = get_empresa_from_user(self.request.user)
+        if empresa is None:
+            # Superadmin ve todo
+            return queryset
+        return queryset.filter(**{self.tenant_field: empresa})
+
+
 class AdminOnlyMixin(UserPassesTestMixin, LoginRequiredMixin):
     """
     Mixin que solo permite acceso a administradores.
@@ -39,13 +69,15 @@ class EjecutivoOrAdminMixin(UserPassesTestMixin, LoginRequiredMixin):
         return redirect(reverse_lazy('core:login'))
 
 
-class ClienteQuerysetFilterMixin:
+class ClienteQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra el queryset de clientes según el rol del usuario.
-    - Admin: ve todos los clientes
+    - Primero filtra por Empresa (tenant)
+    - Admin: ve todos los clientes de su empresa
     - Manager: ve clientes asignados a sus ejecutivos subordinados
     - Ejecutivo: solo ve sus clientes asignados
     """
+    tenant_field = 'empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -77,13 +109,15 @@ class ClienteQuerysetFilterMixin:
         return queryset.none()
 
 
-class OportunidadQuerysetFilterMixin:
+class OportunidadQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra oportunidades según el rol del usuario.
-    - Admin: ve todas las oportunidades
+    - Primero filtra por Empresa (tenant) vía el cliente
+    - Admin: ve todas las oportunidades de su empresa
     - Manager: ve oportunidades de sus ejecutivos subordinados
-    - Ejecutivo: solo ve sus oportunidades (cliente asignado a él)
+    - Ejecutivo: solo ve sus oportunidades
     """
+    tenant_field = 'cliente__empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -115,13 +149,12 @@ class OportunidadQuerysetFilterMixin:
         return queryset.none()
 
 
-class ContactoQuerysetFilterMixin:
+class ContactoQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra contactos según el rol del usuario.
-    - Admin: ve todos los contactos
-    - Manager: ve contactos de sus ejecutivos subordinados
-    - Ejecutivo: solo ve contactos de sus clientes asignados
+    - Primero filtra por Empresa (tenant) vía el cliente
     """
+    tenant_field = 'cliente__empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -153,13 +186,12 @@ class ContactoQuerysetFilterMixin:
         return queryset.none()
 
 
-class LlamadaQuerysetFilterMixin:
+class LlamadaQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra llamadas según el rol del usuario.
-    - Admin: ve todas las llamadas
-    - Manager: ve llamadas de sus ejecutivos subordinados
-    - Ejecutivo: solo ve llamadas de sus oportunidades (cliente asignado a él)
+    - Primero filtra por Empresa (tenant) vía oportunidad → cliente
     """
+    tenant_field = 'oportunidad__cliente__empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -194,13 +226,12 @@ class LlamadaQuerysetFilterMixin:
         return queryset.none()
 
 
-class SeguimientoQuerysetFilterMixin:
+class SeguimientoQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra seguimientos según el rol del usuario.
-    - Admin: ve todos los seguimientos
-    - Manager: ve seguimientos de sus ejecutivos subordinados
-    - Ejecutivo: solo ve seguimientos de sus oportunidades (cliente asignado a él)
+    - Primero filtra por Empresa (tenant) vía oportunidad → cliente
     """
+    tenant_field = 'oportunidad__cliente__empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -235,13 +266,12 @@ class SeguimientoQuerysetFilterMixin:
         return queryset.none()
 
 
-class ComisionQuerysetFilterMixin:
+class ComisionQuerysetFilterMixin(TenantFilterMixin):
     """
     Mixin que filtra comisiones según el rol del usuario.
-    - Admin: ve todas las comisiones
-    - Manager: ve comisiones de sus ejecutivos subordinados
-    - Ejecutivo: solo ve sus propias comisiones
+    - Primero filtra por Empresa (tenant) vía el perfil del usuario
     """
+    tenant_field = 'usuario__profile__empresa'
     def get_queryset(self):
         queryset = super().get_queryset()
         

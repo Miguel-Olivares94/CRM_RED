@@ -11,6 +11,25 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class Empresa(BaseModel):
+    """Tenant — empresa que contrata el CRM"""
+    nombre = models.CharField(max_length=255, verbose_name='Nombre Empresa')
+    rut = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='RUT')
+    dominio = models.CharField(max_length=100, unique=True, blank=True, null=True,
+                               help_text='Ej: claro.cl — se usa para asignar usuarios automáticamente',
+                               verbose_name='Dominio email')
+    activo = models.BooleanField(default=True, verbose_name='Activo')
+    logo = models.ImageField(upload_to='empresas/logos/', blank=True, null=True, verbose_name='Logo')
+
+    class Meta:
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Cliente(BaseModel):
     """Empresa cliente - tabla maestra"""
     ESTADO_CHOICES = [
@@ -61,6 +80,13 @@ class Cliente(BaseModel):
         null=True, blank=True,
         related_name='clientes_creados',
         verbose_name='Creado Por'
+    )
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='clientes',
+        verbose_name='Empresa (tenant)'
     )
 
     # Campos de segmentación Claro
@@ -407,6 +433,14 @@ class UserProfile(BaseModel):
         verbose_name='Rol'
     )
     
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='usuarios',
+        verbose_name='Empresa (tenant)'
+    )
+
     # Supervisor: si es MANAGER, aquí irá el ADMIN supervisor. Si es EJECUTIVO, aquí irá el MANAGER supervisor
     supervisor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
