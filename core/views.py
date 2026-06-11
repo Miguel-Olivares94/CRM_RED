@@ -27,7 +27,7 @@ from .mixins import (
     ClienteQuerysetFilterMixin, OportunidadQuerysetFilterMixin,
     ContactoQuerysetFilterMixin, LlamadaQuerysetFilterMixin,
     SeguimientoQuerysetFilterMixin, ComisionQuerysetFilterMixin,
-    get_user_role
+    TenantFilterMixin, get_user_role
 )
 
 
@@ -604,7 +604,7 @@ class ClienteCreateView(EjecutivoOrAdminMixin, CreateView):
     def form_valid(self, form):
         """Asigna el cliente automáticamente según el rol del usuario"""
         user = self.request.user
-        
+
         # Si es ejecutivo, auto-asigna a él mismo
         if user.groups.filter(name__in=['Ejecutivo', 'Vendedor']).exists():
             form.instance.usuario_asignado = user
@@ -612,6 +612,12 @@ class ClienteCreateView(EjecutivoOrAdminMixin, CreateView):
         # Marcar como prospectado manualmente y registrar quién lo creó
         form.instance.origen = 'MANUAL'
         form.instance.creado_por = user
+
+        # Auto-asignar empresa del usuario (Capa 1 de defensa anti-fuga)
+        try:
+            form.instance.empresa = user.profile.empresa
+        except Exception:
+            pass
 
         return super().form_valid(form)
 
@@ -1176,11 +1182,12 @@ class OportunidadContactosAPIView(LoginRequiredMixin, View):
 
 
 # ==================== META VENTAS ====================
-class MetaVentasListView(LoginRequiredMixin, ListView):
+class MetaVentasListView(LoginRequiredMixin, TenantFilterMixin, ListView):
     model = MetaVentas
     template_name = "core/meta_ventas_list.html"
     context_object_name = "metas"
     paginate_by = 20
+    tenant_field = 'empresa'
 
 
 class MetaVentasCreateView(LoginRequiredMixin, CreateView):
@@ -1188,6 +1195,13 @@ class MetaVentasCreateView(LoginRequiredMixin, CreateView):
     form_class = MetaVentasForm
     template_name = "core/meta_ventas_form.html"
     success_url = reverse_lazy("core:meta_ventas_list")
+
+    def form_valid(self, form):
+        try:
+            form.instance.empresa = self.request.user.profile.empresa
+        except Exception:
+            pass
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1636,6 +1650,15 @@ class ClienteImportView(LoginRequiredMixin, View):
                 defaults['origen'] = 'MANUAL' if es_ejecutivo_importando else 'IMPORTADO'
                 if es_ejecutivo_importando:
                     defaults['creado_por'] = importado_por
+
+            # Auto-asignar empresa del usuario que importa (Capa 1 anti-fuga)
+            if importado_por and not importado_por.is_superuser:
+                try:
+                    empresa_importador = importado_por.profile.empresa
+                    if empresa_importador:
+                        defaults['empresa'] = empresa_importador
+                except Exception:
+                    pass
 
             # Reintentos para manejar bloqueos de SQLite
             for intento in range(3):

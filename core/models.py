@@ -300,6 +300,10 @@ class Llamada(BaseModel):
 
 class MetaVentas(BaseModel):
     """Metas mensuales de vendedores"""
+    empresa = models.ForeignKey(
+        'Empresa', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='metas_ventas', verbose_name='Empresa (tenant)'
+    )
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='metas_ventas', verbose_name='Usuario')
     periodo = models.CharField(max_length=20, verbose_name='Período')  # 2026-04, 2026-05, etc.
     
@@ -329,7 +333,11 @@ class Comision(BaseModel):
         ('APROBADA', 'Aprobada'),
         ('PAGADA', 'Pagada'),
     ]
-    
+
+    empresa = models.ForeignKey(
+        'Empresa', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='comisiones', verbose_name='Empresa (tenant)'
+    )
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comisiones', verbose_name='Usuario')
     meta = models.ForeignKey(MetaVentas, on_delete=models.SET_NULL, null=True, related_name='comisiones', verbose_name='Meta')
     periodo = models.CharField(max_length=20, verbose_name='Período')
