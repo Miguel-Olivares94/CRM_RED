@@ -13,11 +13,26 @@ class BaseModel(models.Model):
 
 class Empresa(BaseModel):
     """Tenant — empresa que contrata el CRM"""
+
+    TIPO_PLATAFORMA = 'PLATAFORMA'
+    TIPO_CLIENTE = 'CLIENTE'
+    TIPO_CHOICES = [
+        (TIPO_PLATAFORMA, 'Plataforma (dueño del sistema)'),
+        (TIPO_CLIENTE, 'Cliente (empresa contratante)'),
+    ]
+
     nombre = models.CharField(max_length=255, verbose_name='Nombre Empresa')
     rut = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='RUT')
     dominio = models.CharField(max_length=100, unique=True, blank=True, null=True,
                                help_text='Ej: claro.cl — se usa para asignar usuarios automáticamente',
                                verbose_name='Dominio email')
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default=TIPO_CLIENTE,
+        verbose_name='Tipo de empresa',
+        help_text='PLATAFORMA = dueño del sistema. Solo puede haber una.',
+    )
     activo = models.BooleanField(default=True, verbose_name='Activo')
     logo = models.ImageField(upload_to='empresas/logos/', blank=True, null=True, verbose_name='Logo')
 

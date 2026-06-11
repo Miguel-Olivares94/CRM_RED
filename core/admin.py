@@ -10,10 +10,40 @@ from .resources import ClienteResource, OportunidadResource
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'rut', 'dominio', 'activo', 'total_usuarios', 'total_clientes')
+    list_display = ('nombre', 'tipo', 'rut', 'dominio', 'activo', 'total_usuarios', 'total_clientes')
     search_fields = ('nombre', 'rut', 'dominio')
-    list_filter = ('activo',)
+    list_filter = ('activo', 'tipo')
     readonly_fields = ('created_at', 'updated_at')
+
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Si la empresa es PLATAFORMA, el campo `tipo` es de solo lectura
+        para evitar que un admin la degrade accidentalmente.
+        Solo el superusuario puede ver/editar todos los campos.
+        """
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.tipo == 'PLATAFORMA' and not request.user.is_superuser:
+            readonly += ['tipo', 'nombre', 'rut', 'dominio', 'activo']
+        return readonly
+
+    def has_delete_permission(self, request, obj=None):
+        """Impide eliminar la empresa PLATAFORMA desde el Admin."""
+        if obj and obj.tipo == 'PLATAFORMA':
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def save_model(self, request, obj, form, change):
+        """
+        Garantiza que solo puede existir UNA empresa PLATAFORMA.
+        Si se intenta crear una segunda, lanza error visible en el Admin.
+        """
+        from django.contrib import messages
+        if obj.tipo == 'PLATAFORMA':
+            existe = Empresa.objects.filter(tipo='PLATAFORMA').exclude(pk=obj.pk).exists()
+            if existe:
+                messages.error(request, 'Ya existe una empresa de tipo PLATAFORMA. Solo puede haber una.')
+                return  # No guarda
+        super().save_model(request, obj, form, change)
 
     def total_usuarios(self, obj):
         return obj.usuarios.count()
