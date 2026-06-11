@@ -45,6 +45,89 @@ class Empresa(BaseModel):
         return self.nombre
 
 
+class CampoPersonalizado(BaseModel):
+    """
+    Define campos extra configurables por empresa para entidades clave.
+    Los valores se almacenan en datos_extra (JSONField) de cada entidad.
+    Estrategia A: Claro Chile conserva columnas reales; otras empresas usan este mecanismo.
+    """
+    TIPO_TEXTO    = 'TEXT'
+    TIPO_NUMERO   = 'NUMBER'
+    TIPO_FECHA    = 'DATE'
+    TIPO_LISTA    = 'SELECT'
+    TIPO_BOOLEANO = 'BOOL'
+
+    TIPOS = [
+        (TIPO_TEXTO,    'Texto'),
+        (TIPO_NUMERO,   'Número'),
+        (TIPO_FECHA,    'Fecha'),
+        (TIPO_LISTA,    'Lista desplegable'),
+        (TIPO_BOOLEANO, 'Booleano (Sí/No)'),
+    ]
+
+    ENTIDAD_CLIENTE     = 'CLIENTE'
+    ENTIDAD_OPORTUNIDAD = 'OPORTUNIDAD'
+    ENTIDAD_SEGUIMIENTO = 'SEGUIMIENTO'
+
+    ENTIDADES = [
+        (ENTIDAD_CLIENTE,     'Cliente'),
+        (ENTIDAD_OPORTUNIDAD, 'Oportunidad'),
+        (ENTIDAD_SEGUIMIENTO, 'Seguimiento'),
+    ]
+
+    empresa     = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='campos_personalizados',
+        verbose_name='Empresa',
+    )
+    entidad     = models.CharField(
+        max_length=20, choices=ENTIDADES,
+        verbose_name='Entidad',
+        help_text='Modelo al que pertenece este campo',
+    )
+    nombre      = models.CharField(
+        max_length=100,
+        verbose_name='Nombre visible',
+        help_text='Ej: "Número de Licencias"',
+    )
+    clave       = models.SlugField(
+        max_length=100,
+        verbose_name='Clave interna',
+        help_text='Identificador único en JSON. Solo letras, números y guiones bajos. Ej: num_licencias',
+    )
+    tipo        = models.CharField(
+        max_length=10, choices=TIPOS, default=TIPO_TEXTO,
+        verbose_name='Tipo de campo',
+    )
+    opciones    = models.JSONField(
+        blank=True, null=True,
+        verbose_name='Opciones',
+        help_text='Solo para tipo Lista. Formato: ["Opción A", "Opción B"]',
+    )
+    obligatorio = models.BooleanField(
+        default=False,
+        verbose_name='Obligatorio',
+    )
+    orden       = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden de aparición',
+    )
+    activo      = models.BooleanField(
+        default=True,
+        verbose_name='Activo',
+    )
+
+    class Meta:
+        verbose_name = 'Campo Personalizado'
+        verbose_name_plural = 'Campos Personalizados'
+        ordering = ['empresa', 'entidad', 'orden', 'nombre']
+        unique_together = [('empresa', 'entidad', 'clave')]
+
+    def __str__(self):
+        return f"{self.empresa.nombre} | {self.get_entidad_display()} | {self.nombre}"
+
+
 class Cliente(BaseModel):
     """Empresa cliente - tabla maestra"""
     ESTADO_CHOICES = [
@@ -120,7 +203,14 @@ class Cliente(BaseModel):
     movil = models.CharField(max_length=10, blank=True, null=True, verbose_name='¿Móvil?')
     fijo_movil = models.CharField(max_length=50, blank=True, null=True, verbose_name='Fijo+Móvil')
     edv = models.CharField(max_length=150, blank=True, null=True, verbose_name='Ejecutivo de Ventas (EDV)')
-    
+
+    # Campos personalizados por empresa (Fase 1: estructura, sin uso en Claro Chile)
+    datos_extra = models.JSONField(
+        blank=True, null=True, default=dict,
+        verbose_name='Datos adicionales',
+        help_text='Almacena valores de campos personalizados definidos por la empresa (CampoPersonalizado)',
+    )
+
     class Meta:
         ordering = ['nombre_empresa']
         verbose_name = 'Cliente'
@@ -230,7 +320,14 @@ class Oportunidad(BaseModel):
         related_name='oportunidades_creadas',
         verbose_name='Creado Por'
     )
-    
+
+    # Campos personalizados por empresa
+    datos_extra = models.JSONField(
+        blank=True, null=True, default=dict,
+        verbose_name='Datos adicionales',
+        help_text='Almacena valores de campos personalizados definidos por la empresa (CampoPersonalizado)',
+    )
+
     class Meta:
         ordering = ['-fecha_creacion']
         verbose_name = 'Oportunidad'
@@ -419,7 +516,14 @@ class Seguimiento(BaseModel):
         related_name='seguimientos_creados',
         verbose_name='Creado Por'
     )
-    
+
+    # Campos personalizados por empresa
+    datos_extra = models.JSONField(
+        blank=True, null=True, default=dict,
+        verbose_name='Datos adicionales',
+        help_text='Almacena valores de campos personalizados definidos por la empresa (CampoPersonalizado)',
+    )
+
     class Meta:
         ordering = ['-fecha_vencimiento', '-prioridad']
         verbose_name = 'Seguimiento'

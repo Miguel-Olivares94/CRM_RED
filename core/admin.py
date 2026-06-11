@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from import_export.admin import ImportExportModelAdmin
 from .models import (
-    Empresa, Cliente, Contacto, Oportunidad, Llamada,
+    Empresa, CampoPersonalizado, Cliente, Contacto, Oportunidad, Llamada,
     MetaVentas, Comision, Seguimiento, UserProfile
 )
 from .resources import ClienteResource, OportunidadResource
@@ -360,3 +360,50 @@ class UserProfileAdmin(admin.ModelAdmin):
             count
         )
     get_subordinados_count.short_description = 'Subordinados'
+
+
+@admin.register(CampoPersonalizado)
+class CampoPersonalizadoAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'entidad', 'nombre', 'clave', 'tipo', 'obligatorio', 'orden', 'activo')
+    list_filter = ('empresa', 'entidad', 'tipo', 'activo')
+    search_fields = ('nombre', 'clave', 'empresa__nombre')
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('orden', 'activo')
+    ordering = ('empresa', 'entidad', 'orden', 'nombre')
+
+    fieldsets = (
+        ('Identificación', {
+            'fields': ('empresa', 'entidad', 'nombre', 'clave'),
+        }),
+        ('Configuración del campo', {
+            'fields': ('tipo', 'opciones', 'obligatorio', 'orden', 'activo'),
+            'description': (
+                'Para tipo Lista, ingresar opciones como lista JSON. '
+                'Ejemplo: ["Opción A", "Opción B", "Opción C"]'
+            ),
+        }),
+        ('Auditoría', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def get_queryset(self, request):
+        """Superusuario ve todos. Admin no-superuser solo ve campos de su empresa."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        try:
+            empresa = request.user.profile.empresa
+            return qs.filter(empresa=empresa)
+        except Exception:
+            return qs.none()
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Al crear un campo, restringe el selector de empresa a la del usuario."""
+        if db_field.name == 'empresa' and not request.user.is_superuser:
+            try:
+                kwargs['queryset'] = Empresa.objects.filter(pk=request.user.profile.empresa.pk)
+            except Exception:
+                pass
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
