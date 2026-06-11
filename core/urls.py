@@ -93,7 +93,7 @@ urlpatterns = [
     # Admin utilities
     path("admin-fix-rogers/", FixRogersRoleView.as_view(), name="fix_rogers_role"),
     path("equipo/asignar/", AsignarEquipoView.as_view(), name="asignar_equipo"),
-    path("admin/validar-tenancy/", DiagnosticoTenancyView.as_view(), name="diagnostico_tenancy"),
+    path("herramientas/validar-tenancy/", DiagnosticoTenancyView.as_view(), name="diagnostico_tenancy"),
 
     # API
     path("api/comunas/", api_comunas, name="api_comunas"),
