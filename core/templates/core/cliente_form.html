@@ -157,6 +157,27 @@
             {% if form.observaciones.errors %}<div class="field-error mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.observaciones.errors.0 }}</div>{% endif %}
           </div>
 
+          <!-- ── CAMPOS PERSONALIZADOS ──────────────────────────────── -->
+          {% with campos_extra=form.campos_extra_iter %}
+          {% if campos_extra %}
+          <div class="form-section">
+            <div class="section-title"><i class="bi bi-sliders me-2"></i>Información adicional</div>
+            <div class="row g-3">
+              {% for campo_bound in form.campos_extra_iter %}
+              <div class="col-12 col-sm-6">
+                <div class="form-label-wrapper">
+                  {{ campo_bound.label_tag }}
+                  {% if campo_bound.field.required %}<span class="text-danger ms-1">*</span>{% endif %}
+                </div>
+                {{ campo_bound }}
+                {% if campo_bound.errors %}<div class="field-error mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ campo_bound.errors.0 }}</div>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+
           <!-- Hidden fields -->
           {{ form.dv.as_hidden }}
 

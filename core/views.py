@@ -20,7 +20,7 @@ from .forms import (
 )
 from .models import (
     Cliente, Contacto, Oportunidad, Llamada,
-    MetaVentas, Comision, Seguimiento, UserProfile
+    MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -619,6 +619,17 @@ class ClienteCreateView(EjecutivoOrAdminMixin, CreateView):
         except Exception:
             pass
 
+        # Guardar valores de campos personalizados en datos_extra
+        datos_extra = form.instance.datos_extra or {}
+        for key, value in form.cleaned_data.items():
+            if key.startswith('extra__'):
+                clave = key[len('extra__'):]
+                # Serializar fecha a string para JSON
+                if hasattr(value, 'isoformat'):
+                    value = value.isoformat()
+                datos_extra[clave] = value
+        form.instance.datos_extra = datos_extra
+
         return super().form_valid(form)
 
 
@@ -634,6 +645,30 @@ class ClienteDetailView(EjecutivoOrAdminMixin, ClienteQuerysetFilterMixin, Detai
         context["oportunidades"] = cliente.oportunidades.filter(estado='ABIERTA')
         context["valor_cartera"] = cliente.valor_cartera
         context['user_role'] = get_user_role(self.request.user)
+        # Pasar campos personalizados de la empresa para mostrar datos_extra
+        try:
+            empresa = cliente.empresa
+            if empresa:
+                campos_qs = CampoPersonalizado.objects.filter(
+                    empresa=empresa,
+                    entidad=CampoPersonalizado.ENTIDAD_CLIENTE,
+                    activo=True,
+                ).order_by('orden', 'nombre')
+                datos_extra = cliente.datos_extra or {}
+                # Prepara lista [{nombre, tipo, valor}] solo para campos con valor
+                context['campos_extra_valores'] = [
+                    {
+                        'nombre': c.nombre,
+                        'tipo': c.tipo,
+                        'valor': datos_extra.get(c.clave, ''),
+                    }
+                    for c in campos_qs
+                    if datos_extra.get(c.clave) not in (None, '', {}, [])
+                ]
+            else:
+                context['campos_extra_valores'] = []
+        except Exception:
+            context['campos_extra_valores'] = []
         return context
     
     def get_object(self, queryset=None):
@@ -656,6 +691,11 @@ class ClienteUpdateView(EjecutivoOrAdminMixin, UpdateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        # Pasar empresa del usuario para inyectar campos personalizados
+        try:
+            kwargs['empresa'] = self.request.user.profile.empresa
+        except Exception:
+            kwargs['empresa'] = None
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -681,6 +721,18 @@ class ClienteUpdateView(EjecutivoOrAdminMixin, UpdateView):
             if obj.usuario_asignado != user:
                 raise PermissionDenied("No tienes permiso para editar este cliente")
         return obj
+
+    def form_valid(self, form):
+        """Guarda valores de campos personalizados en datos_extra."""
+        datos_extra = form.instance.datos_extra or {}
+        for key, value in form.cleaned_data.items():
+            if key.startswith('extra__'):
+                clave = key[len('extra__'):]
+                if hasattr(value, 'isoformat'):
+                    value = value.isoformat()
+                datos_extra[clave] = value
+        form.instance.datos_extra = datos_extra
+        return super().form_valid(form)
 
 
 class ClienteDeleteView(AdminOnlyMixin, DeleteView):

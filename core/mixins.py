@@ -1,28 +1,25 @@
 """
 Mixins para controlar acceso y filtrado por roles de usuario
 """
+import logging
+
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponseForbidden
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.db.models import Q
 from .models import Cliente
 
-
-def get_empresa_from_user(user):
-    """Retorna la Empresa (tenant) del usuario o None si es superadmin."""
-    if user.is_superuser:
-        return None
-    try:
-        return user.profile.empresa
-    except Exception:
-        return None
+logger = logging.getLogger('core.tenancy')
 
 
 class TenantFilterMixin:
     """
     Mixin base que restringe el queryset al tenant (Empresa) del usuario.
     - Superadmin: ve todo (sin filtro)
+    - Usuario sin UserProfile o sin empresa asignada: queryset vacío
+      (se registra como error de tenancy; nunca se devuelven datos sin filtrar)
     - Cualquier otro usuario: solo ve datos de su empresa
     Debe usarse ANTES de los mixins de rol (ClienteQuerysetFilterMixin, etc.)
     ya que estos afinan aún más el filtro.
@@ -32,11 +29,21 @@ class TenantFilterMixin:
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        empresa = get_empresa_from_user(self.request.user)
-        if empresa is None:
-            # Superadmin ve todo
+        user = self.request.user
+
+        if user.is_superuser:
             return queryset
-        return queryset.filter(**{self.tenant_field: empresa})
+
+        profile = getattr(user, 'profile', None)
+        if profile is None or profile.empresa_id is None:
+            logger.error(
+                "Tenancy: usuario %s (id=%s) sin UserProfile/empresa asignada — "
+                "acceso denegado en %s",
+                getattr(user, 'email', user), user.pk, type(self).__name__,
+            )
+            return queryset.none()
+
+        return queryset.filter(**{self.tenant_field: profile.empresa})
 
 
 class AdminOnlyMixin(UserPassesTestMixin, LoginRequiredMixin):
@@ -98,8 +105,12 @@ class ClienteQuerysetFilterMixin(TenantFilterMixin):
             elif profile.es_ejecutivo:
                 # Ejecutivo solo ve sus clientes asignados
                 return queryset.filter(usuario_asignado=user)
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
         
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name='Ejecutivo').exists():
@@ -138,8 +149,12 @@ class OportunidadQuerysetFilterMixin(TenantFilterMixin):
             elif profile.es_ejecutivo:
                 # Ejecutivo ve oportunidades donde es el usuario directo O tiene el cliente asignado
                 return queryset.filter(Q(usuario=user) | Q(cliente__usuario_asignado=user))
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
 
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name__in=['Ejecutivo', 'Vendedor']).exists():
@@ -175,8 +190,12 @@ class ContactoQuerysetFilterMixin(TenantFilterMixin):
             elif profile.es_ejecutivo:
                 # Ejecutivo solo ve contactos de sus clientes asignados
                 return queryset.filter(cliente__usuario_asignado=user)
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
         
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name='Ejecutivo').exists():
@@ -213,8 +232,12 @@ class LlamadaQuerysetFilterMixin(TenantFilterMixin):
                 return queryset.filter(
                     Q(oportunidad__usuario=user) | Q(oportunidad__cliente__usuario_asignado=user)
                 )
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
 
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name__in=['Ejecutivo', 'Vendedor']).exists():
@@ -253,8 +276,12 @@ class SeguimientoQuerysetFilterMixin(TenantFilterMixin):
                 return queryset.filter(
                     Q(oportunidad__usuario=user) | Q(oportunidad__cliente__usuario_asignado=user)
                 )
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
 
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name__in=['Ejecutivo', 'Vendedor']).exists():
@@ -292,8 +319,12 @@ class ComisionQuerysetFilterMixin(TenantFilterMixin):
             elif profile.es_ejecutivo:
                 # Ejecutivo solo ve sus propias comisiones
                 return queryset.filter(usuario=user)
-        except:
-            pass
+        except ObjectDoesNotExist:
+            # TenantFilterMixin ya redujo el queryset a .none() para usuarios
+            # sin UserProfile/empresa; aquí solo evitamos un 500.
+            logger.debug(
+                "Tenancy: %s sin UserProfile en %s", user, type(self).__name__
+            )
         
         # Fallback para ejecutivos con grupo
         if user.groups.filter(name='Ejecutivo').exists():
@@ -334,10 +365,12 @@ class ManagerOnlyMixin(UserPassesTestMixin, LoginRequiredMixin):
     """
     def test_func(self):
         try:
-            from .models import UserProfile
             profile = self.request.user.profile
             return profile.role == 'MANAGER'
-        except:
+        except ObjectDoesNotExist:
+            logger.debug(
+                "Tenancy: %s sin UserProfile en ManagerOnlyMixin", self.request.user
+            )
             return False
     
     def handle_no_permission(self):

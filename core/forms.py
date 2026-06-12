@@ -1,7 +1,45 @@
-from .models import Cliente, Contacto, Oportunidad, Llamada, MetaVentas, Comision, Seguimiento
+from .models import Cliente, Contacto, Oportunidad, Llamada, MetaVentas, Comision, Seguimiento, CampoPersonalizado
 from .chile_data import REGIONES_CHOICES, SECTORES_CHOICES, TIPO_CLIENTE_CHOICES, SI_NO_CHOICES, PRODUCTOS_CLARO_CHOICES
 from django import forms
 from django.contrib.auth import get_user_model
+
+
+def _campo_personalizado_to_form_field(campo):
+    """Convierte un CampoPersonalizado en el campo de formulario Django correspondiente."""
+    attrs = {'class': 'form-control'}
+    required = campo.obligatorio
+
+    if campo.tipo == CampoPersonalizado.TIPO_TEXTO:
+        return forms.CharField(
+            label=campo.nombre, required=required,
+            widget=forms.TextInput(attrs=attrs),
+        )
+    if campo.tipo == CampoPersonalizado.TIPO_NUMERO:
+        return forms.DecimalField(
+            label=campo.nombre, required=required,
+            widget=forms.NumberInput(attrs={**attrs, 'step': 'any'}),
+        )
+    if campo.tipo == CampoPersonalizado.TIPO_FECHA:
+        return forms.DateField(
+            label=campo.nombre, required=required,
+            widget=forms.DateInput(attrs={**attrs, 'type': 'date'}),
+        )
+    if campo.tipo == CampoPersonalizado.TIPO_LISTA:
+        opciones = campo.opciones or []
+        choices = [('', '-- Selecciona --')] + [(o, o) for o in opciones]
+        return forms.ChoiceField(
+            label=campo.nombre, required=required,
+            choices=choices,
+            widget=forms.Select(attrs=attrs),
+        )
+    if campo.tipo == CampoPersonalizado.TIPO_BOOLEANO:
+        return forms.BooleanField(
+            label=campo.nombre, required=False,
+            widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        )
+    # fallback
+    return forms.CharField(label=campo.nombre, required=required,
+                           widget=forms.TextInput(attrs=attrs))
 
 User = get_user_model()
 
@@ -16,8 +54,10 @@ class DateTimeInput(forms.DateTimeInput):
 
 # ==================== CLIENTE ====================
 class ClienteForm(forms.ModelForm):
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Guardar empresa para usarla en clean() y en el template
+        self._empresa = empresa
 
         # Mostrar email en el select de ejecutivo asignado
         self.fields['usuario_asignado'].label_from_instance = lambda obj: obj.email or obj.username
@@ -137,7 +177,32 @@ class ClienteForm(forms.ModelForm):
                     widget=forms.Select(attrs={"class": "form-control"})
                 )
                 self.initial['edv'] = n_edv
-        
+
+        # ── Campos personalizados por empresa ─────────────────────────────────
+        # Se inyectan al final del formulario con prefijo 'extra__<clave>'
+        # Solo si la empresa fue pasada explícitamente desde la vista.
+        if self._empresa:
+            campos = CampoPersonalizado.objects.filter(
+                empresa=self._empresa,
+                entidad=CampoPersonalizado.ENTIDAD_CLIENTE,
+                activo=True,
+            ).order_by('orden', 'nombre')
+            for campo in campos:
+                field_name = f'extra__{campo.clave}'
+                form_field = _campo_personalizado_to_form_field(campo)
+                # En edición, recuperar el valor guardado de datos_extra
+                if self.instance.pk and self.instance.datos_extra:
+                    valor = self.instance.datos_extra.get(campo.clave)
+                    if valor is not None:
+                        form_field.initial = valor
+                self.fields[field_name] = form_field
+
+    def campos_extra_iter(self):
+        """Iterador para el template: devuelve (campo_form, nombre_visible) de los campos extra."""
+        for name, field in self.fields.items():
+            if name.startswith('extra__'):
+                yield self[name]
+
     class Meta:
         model = Cliente
         fields = [

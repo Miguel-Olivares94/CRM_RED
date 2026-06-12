@@ -299,6 +299,35 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- Información adicional (campos personalizados) -->
+        {% if campos_extra_valores %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-sliders me-2"></i>Información adicional
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for item in campos_extra_valores %}
+                    <div class="col-md-6 mb-3">
+                        <strong>{{ item.nombre }}:</strong>
+                        <p class="text-muted">
+                            {% if item.tipo == 'BOOL' %}
+                                {% if item.valor %}
+                                    <span class="badge bg-success">Sí</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                {% endif %}
+                            {% else %}
+                                {{ item.valor|default:"-" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Sidebar -->

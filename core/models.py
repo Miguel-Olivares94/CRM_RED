@@ -151,6 +151,11 @@ class Cliente(BaseModel):
     ]
 
     # Campos básicos
+    # rut es único GLOBAL (no por empresa) por decisión deliberada: cambiarlo a
+    # unique_together(empresa, rut) requiere rediseñar ClienteResource, las vistas
+    # de importación de cartera y los scripts legacy con ON CONFLICT (rut). Diferido
+    # hasta que exista una empresa real con clientes propios o se rediseñen los
+    # importadores (deuda técnica conocida).
     rut = models.CharField(max_length=20, unique=True, verbose_name='RUT')
     dv = models.CharField(max_length=1, blank=True, null=True, verbose_name='DV')
     nombre_empresa = models.CharField(max_length=255, verbose_name='Nombre Empresa')
@@ -430,7 +435,7 @@ class MetaVentas(BaseModel):
     bonificacion_meta = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Bonificación Meta')
     
     class Meta:
-        unique_together = ['usuario', 'periodo']
+        unique_together = [('empresa', 'usuario', 'periodo')]
         verbose_name = 'Meta de Ventas'
         verbose_name_plural = 'Metas de Ventas'
     
@@ -468,7 +473,7 @@ class Comision(BaseModel):
     fecha_pago = models.DateField(blank=True, null=True, verbose_name='Fecha Pago')
     
     class Meta:
-        unique_together = ['usuario', 'periodo']
+        unique_together = [('empresa', 'usuario', 'periodo')]
         verbose_name = 'Comisión'
         verbose_name_plural = 'Comisiones'
     
