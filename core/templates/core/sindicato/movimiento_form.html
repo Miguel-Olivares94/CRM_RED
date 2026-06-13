@@ -1,0 +1,19 @@
+{% extends 'core/base.html' %}
+{% block title %}Formulario Movimiento Sindicato{% endblock %}
+{% block content %}
+<h2>Movimiento Sindicato</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% if warnings %}
+    <ul>
+      {% for w in warnings %}
+        <li>{{ w }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {{ form.as_p }}
+  <button type="submit">Guardar</button>
+</form>
+<a href="{% url 'core:sindicato_movimiento_list' %}">Volver</a>
+{% endblock %}

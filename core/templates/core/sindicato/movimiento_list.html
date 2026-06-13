@@ -1,0 +1,21 @@
+{% extends 'core/base.html' %}
+{% block title %}Movimientos Sindicato{% endblock %}
+{% block content %}
+<h2>Movimientos Sindicato</h2>
+<form method="get">
+  <input type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="YYYY-MM">
+  <button type="submit">Filtrar</button>
+</form>
+<p>Total: {{ movimientos|length }}</p>
+<ul>
+  {% for mov in movimientos %}
+    <li>
+      {{ mov.periodo }} - {{ mov.socio.rut }} - {{ mov.tipo_beneficio.nombre }} - {{ mov.monto }}
+      <a href="{% url 'core:sindicato_movimiento_update' mov.pk %}">Editar</a>
+    </li>
+  {% empty %}
+    <li>Sin movimientos</li>
+  {% endfor %}
+</ul>
+<a href="{% url 'core:sindicato_movimiento_create' %}">Nuevo movimiento</a>
+{% endblock %}

@@ -23,6 +23,16 @@ from .views import (
     FixRogersRoleView,
     AsignarEquipoView,
     DiagnosticoTenancyView,
+    SocioSindicatoListView,
+    SocioSindicatoCreateView,
+    SocioSindicatoUpdateView,
+    TipoBeneficioSindicatoListView,
+    TipoBeneficioSindicatoCreateView,
+    TipoBeneficioSindicatoUpdateView,
+    MovimientoSindicatoListView,
+    MovimientoSindicatoCreateView,
+    MovimientoSindicatoUpdateView,
+    ConsultaRutSindicatoView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -97,6 +107,18 @@ urlpatterns = [
 
     # API
     path("api/comunas/", api_comunas, name="api_comunas"),
+
+    # ── Módulo Sindicato MVP ─────────────────────────────────────────
+    path('sindicato/socios/', SocioSindicatoListView.as_view(), name='sindicato_socio_list'),
+    path('sindicato/socios/nuevo/', SocioSindicatoCreateView.as_view(), name='sindicato_socio_create'),
+    path('sindicato/socios/<int:pk>/editar/', SocioSindicatoUpdateView.as_view(), name='sindicato_socio_update'),
+    path('sindicato/beneficios/', TipoBeneficioSindicatoListView.as_view(), name='sindicato_beneficio_list'),
+    path('sindicato/beneficios/nuevo/', TipoBeneficioSindicatoCreateView.as_view(), name='sindicato_beneficio_create'),
+    path('sindicato/beneficios/<int:pk>/editar/', TipoBeneficioSindicatoUpdateView.as_view(), name='sindicato_beneficio_update'),
+    path('sindicato/movimientos/', MovimientoSindicatoListView.as_view(), name='sindicato_movimiento_list'),
+    path('sindicato/movimientos/nuevo/', MovimientoSindicatoCreateView.as_view(), name='sindicato_movimiento_create'),
+    path('sindicato/movimientos/<int:pk>/editar/', MovimientoSindicatoUpdateView.as_view(), name='sindicato_movimiento_update'),
+    path('sindicato/consulta-rut/', ConsultaRutSindicatoView.as_view(), name='sindicato_consulta_rut'),
 
     # ── Asistente / Copiloto de IA ────────────────────────────────────
     path(

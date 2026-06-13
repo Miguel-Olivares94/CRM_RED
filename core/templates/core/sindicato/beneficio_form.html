@@ -1,0 +1,12 @@
+{% extends 'core/base.html' %}
+{% block title %}Formulario Beneficio Sindicato{% endblock %}
+{% block content %}
+<h2>Tipo Beneficio Sindicato</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {{ form.as_p }}
+  <button type="submit">Guardar</button>
+</form>
+<a href="{% url 'core:sindicato_beneficio_list' %}">Volver</a>
+{% endblock %}

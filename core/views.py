@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.views import View
 from django.views.generic import CreateView, ListView, TemplateView, DetailView, UpdateView, DeleteView
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
 from django.utils.translation import activate
 from datetime import datetime, timedelta
 import json
@@ -16,11 +16,13 @@ import io
 from .forms import (
     ClienteForm, ContactoForm, OportunidadForm, LlamadaForm,
     MetaVentasForm, ComisionForm, SeguimientoForm, EmailAuthenticationForm,
-    CreateEjecutivoForm
+    CreateEjecutivoForm, SocioSindicatoForm, TipoBeneficioSindicatoForm,
+    MovimientoSindicatoForm,
 )
 from .models import (
     Cliente, Contacto, Oportunidad, Llamada,
-    MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado
+    MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
+    Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -1854,11 +1856,12 @@ class ClienteImportView(LoginRequiredMixin, View):
 
             # Si el cliente ya existe y no se pidió reasignar, conservar usuario_asignado actual
             defaults = {k: v for k, v in datos.items() if k != 'rut'}
-            existente = Cliente.objects.filter(rut=rut).first()
-            if existente and not reasignar:
-                defaults.pop('usuario_asignado', None)
+            if not reasignar:
+                existente = Cliente.objects.filter(rut=rut).first()
+                if existente:
+                    defaults.pop('usuario_asignado', None)
 
-            # Origen: ejecutivo/vendedor → MANUAL (prospectado), admin/manager → IMPORTADO
+            # Origen: ejecutivo/vendedor -> MANUAL (prospectado), admin/manager -> IMPORTADO
             if not existente:
                 es_ejecutivo_importando = (
                     importado_por and
@@ -1917,7 +1920,7 @@ class ClienteImportView(LoginRequiredMixin, View):
         usuarios = self._get_usuarios_disponibles(request.user)
         es_ejecutivo = self._es_solo_ejecutivo(request.user)
 
-        # PASO 2 — Confirmar e importar
+        # PASO 2 - Confirmar e importar
         if request.POST.get('action') == 'confirmar':
             import json as _json
             filas_json = request.session.get('import_filas')
@@ -1944,6 +1947,7 @@ class ClienteImportView(LoginRequiredMixin, View):
 
             filas_inc = resultado.get('filas_incompletas', [])
             err_tec   = resultado.get('errores_tecnicos', [])
+
             return render(request, self.template_name, {
                 'step': 'resultado',
                 'creados': resultado['creados'],
@@ -1954,7 +1958,7 @@ class ClienteImportView(LoginRequiredMixin, View):
                 'total': resultado['creados'] + resultado['actualizados'] + len(filas_inc) + len(err_tec),
             })
 
-        # PASO 1 — Subir archivo y mostrar preview
+        # PASO 1 - Subir archivo y mostrar preview
         archivo = request.FILES.get('archivo')
         if not archivo:
             return render(request, self.template_name, {
@@ -1985,25 +1989,356 @@ class ClienteImportView(LoginRequiredMixin, View):
 
         # Guardar en sesión para el paso 2
         import json as _json
-        reasignar = request.POST.get('reasignar_existentes') == 'on'
         request.session['import_filas'] = _json.dumps(filas)
         request.session['import_usuario_id'] = usuario_asignado.pk
-        request.session['import_reasignar'] = reasignar
+        request.session['import_reasignar'] = request.POST.get('reasignar_existentes') == 'on'
 
-        nuevos    = sum(1 for p in preview if p['estado'] == 'NUEVO')
+        nuevos = sum(1 for p in preview if p['estado'] == 'NUEVO')
         actualizar = sum(1 for p in preview if p['estado'] == 'ACTUALIZAR')
-        con_error  = sum(1 for p in preview if p['estado'] == 'ERROR')
+        con_error = sum(1 for p in preview if p['estado'] == 'ERROR')
 
         return render(request, self.template_name, {
             'step': 'preview',
             'preview': preview,
             'usuario_asignado': usuario_asignado,
-            'reasignar': reasignar,
+            'reasignar': request.session['import_reasignar'],
             'nuevos': nuevos,
             'actualizar': actualizar,
             'con_error': con_error,
             'total': len(preview),
         })
+
+
+# ==================== SINDICATO MVP (DÍA 4) ====================
+
+def _grupo_nombre_normalizado(nombre):
+    return (
+        (nombre or '')
+        .strip()
+        .lower()
+        .replace('á', 'a')
+        .replace('é', 'e')
+        .replace('í', 'i')
+        .replace('ó', 'o')
+        .replace('ú', 'u')
+    )
+
+
+def _roles_usuario(user):
+    return {_grupo_nombre_normalizado(n) for n in user.groups.values_list('name', flat=True)}
+
+
+def _es_admin_sindicato(user):
+    roles = _roles_usuario(user)
+    return user.is_superuser or 'admin' in roles or 'administracion' in roles
+
+
+def _es_tesoreria_sindicato(user):
+    roles = _roles_usuario(user)
+    return user.is_superuser or 'tesoreria' in roles
+
+
+def _es_dirigente_sindicato(user):
+    roles = _roles_usuario(user)
+    return user.is_superuser or 'dirigente' in roles
+
+
+def _rut_normalizado_simple(rut):
+    if not rut:
+        return ''
+    limpio = ''.join(ch for ch in str(rut).upper() if ch.isdigit() or ch == 'K')
+    if len(limpio) < 2:
+        return limpio
+    return f"{limpio[:-1]}-{limpio[-1]}"
+
+
+class SindicatoTenantMixin(LoginRequiredMixin):
+    login_url = 'core:login'
+
+    def get_empresa_usuario(self):
+        user = self.request.user
+        if user.is_superuser:
+            empresa_id = self.request.GET.get('empresa_id') or self.request.POST.get('empresa_id')
+            if empresa_id:
+                try:
+                    return Empresa.objects.get(pk=empresa_id)
+                except Empresa.DoesNotExist:
+                    raise Http404('Empresa no encontrada')
+            return None
+
+        try:
+            return user.profile.empresa
+        except Exception:
+            return None
+
+    def filtrar_por_tenant(self, queryset):
+        empresa = self.get_empresa_usuario()
+        if self.request.user.is_superuser and empresa is None:
+            return queryset
+        if empresa is None:
+            return queryset.none()
+        return queryset.filter(empresa=empresa)
+
+
+class SindicatoRolePermissionMixin:
+    permiso_ver = None
+    permiso_editar = None
+
+    def _check_permiso(self, permiso):
+        user = self.request.user
+        if user.is_superuser:
+            return True
+        if permiso == 'socios_beneficios_ver':
+            return _es_admin_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'socios_beneficios_editar':
+            return _es_admin_sindicato(user)
+        if permiso == 'movimientos_ver':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'movimientos_editar':
+            return _es_tesoreria_sindicato(user)
+        if permiso == 'consulta_rut':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        return False
+
+    def dispatch(self, request, *args, **kwargs):
+        permiso = self.permiso_ver
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            permiso = self.permiso_editar or self.permiso_ver
+        if not self._check_permiso(permiso):
+            return HttpResponseForbidden('No tienes permiso para acceder a esta sección.')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class SocioSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = SocioSindicato
+    template_name = 'core/sindicato/socio_list.html'
+    context_object_name = 'socios'
+    permiso_ver = 'socios_beneficios_ver'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(SocioSindicato.objects.all())
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(Q(rut__icontains=q) | Q(nombre__icontains=q))
+        return qs.order_by('nombre')
+
+
+class SocioSindicatoCreateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, CreateView):
+    model = SocioSindicato
+    form_class = SocioSindicatoForm
+    template_name = 'core/sindicato/socio_form.html'
+    success_url = reverse_lazy('core:sindicato_socio_list')
+    permiso_ver = 'socios_beneficios_editar'
+    permiso_editar = 'socios_beneficios_editar'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+    def form_valid(self, form):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            form.add_error(None, 'No se pudo determinar la empresa del usuario.')
+            return self.form_invalid(form)
+        form.instance.empresa = empresa
+        return super().form_valid(form)
+
+
+class SocioSindicatoUpdateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, UpdateView):
+    model = SocioSindicato
+    form_class = SocioSindicatoForm
+    template_name = 'core/sindicato/socio_form.html'
+    success_url = reverse_lazy('core:sindicato_socio_list')
+    permiso_ver = 'socios_beneficios_editar'
+    permiso_editar = 'socios_beneficios_editar'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(SocioSindicato.objects.all())
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+
+class TipoBeneficioSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = TipoBeneficioSindicato
+    template_name = 'core/sindicato/beneficio_list.html'
+    context_object_name = 'beneficios'
+    permiso_ver = 'socios_beneficios_ver'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(TipoBeneficioSindicato.objects.all()).order_by('orden_export', 'nombre')
+
+
+class TipoBeneficioSindicatoCreateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, CreateView):
+    model = TipoBeneficioSindicato
+    form_class = TipoBeneficioSindicatoForm
+    template_name = 'core/sindicato/beneficio_form.html'
+    success_url = reverse_lazy('core:sindicato_beneficio_list')
+    permiso_ver = 'socios_beneficios_editar'
+    permiso_editar = 'socios_beneficios_editar'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+    def form_valid(self, form):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            form.add_error(None, 'No se pudo determinar la empresa del usuario.')
+            return self.form_invalid(form)
+        form.instance.empresa = empresa
+        return super().form_valid(form)
+
+
+class TipoBeneficioSindicatoUpdateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, UpdateView):
+    model = TipoBeneficioSindicato
+    form_class = TipoBeneficioSindicatoForm
+    template_name = 'core/sindicato/beneficio_form.html'
+    success_url = reverse_lazy('core:sindicato_beneficio_list')
+    permiso_ver = 'socios_beneficios_editar'
+    permiso_editar = 'socios_beneficios_editar'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(TipoBeneficioSindicato.objects.all())
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+
+class MovimientoSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = MovimientoSindicato
+    template_name = 'core/sindicato/movimiento_list.html'
+    context_object_name = 'movimientos'
+    permiso_ver = 'movimientos_ver'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(
+            MovimientoSindicato.objects.select_related('socio', 'tipo_beneficio')
+        )
+        periodo = self.request.GET.get('periodo', '').strip()
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+        return qs.order_by('-periodo', '-created_at')
+
+
+class MovimientoSindicatoCreateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, CreateView):
+    model = MovimientoSindicato
+    form_class = MovimientoSindicatoForm
+    template_name = 'core/sindicato/movimiento_form.html'
+    success_url = reverse_lazy('core:sindicato_movimiento_list')
+    permiso_ver = 'movimientos_editar'
+    permiso_editar = 'movimientos_editar'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['warnings'] = getattr(self.get_form(), 'warnings', [])
+        return context
+
+    def form_valid(self, form):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            form.add_error(None, 'No se pudo determinar la empresa del usuario.')
+            return self.form_invalid(form)
+        form.instance.empresa = empresa
+        form.instance.creado_por = self.request.user
+        return super().form_valid(form)
+
+
+class MovimientoSindicatoUpdateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, UpdateView):
+    model = MovimientoSindicato
+    form_class = MovimientoSindicatoForm
+    template_name = 'core/sindicato/movimiento_form.html'
+    success_url = reverse_lazy('core:sindicato_movimiento_list')
+    permiso_ver = 'movimientos_editar'
+    permiso_editar = 'movimientos_editar'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(MovimientoSindicato.objects.all())
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        kwargs['empresa'] = self.get_empresa_usuario()
+        return kwargs
+
+    def form_valid(self, form):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            form.add_error(None, 'No se pudo determinar la empresa del usuario.')
+            return self.form_invalid(form)
+        form.instance.empresa = empresa
+        return super().form_valid(form)
+
+
+class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixin, TemplateView):
+    template_name = 'core/sindicato/consulta_rut.html'
+    permiso_ver = 'consulta_rut'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        empresa = self.get_empresa_usuario()
+        rut_query = self.request.GET.get('rut', '').strip()
+        rut = _rut_normalizado_simple(rut_query)
+        periodo_actual = datetime.now().strftime('%Y-%m')
+
+        context.update(
+            {
+                'rut_buscado': rut_query,
+                'periodo_actual': periodo_actual,
+                'socio': None,
+                'total_periodo': 0,
+                'montos_por_beneficio': [],
+                'observaciones': [],
+                'historial_periodos': [],
+            }
+        )
+
+        if not rut:
+            return context
+
+        socios_qs = SocioSindicato.objects.all()
+        if self.request.user.is_superuser and empresa is None:
+            socio = socios_qs.filter(rut=rut).select_related('empresa').first()
+        else:
+            if empresa is None:
+                return context
+            socio = socios_qs.filter(empresa=empresa, rut=rut).select_related('empresa').first()
+
+        if not socio:
+            return context
+
+        movs = MovimientoSindicato.objects.filter(empresa=socio.empresa, socio=socio)
+        movs_periodo = movs.filter(periodo=periodo_actual).exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+
+        context['socio'] = socio
+        context['total_periodo'] = movs_periodo.aggregate(total=Sum('monto'))['total'] or 0
+        context['montos_por_beneficio'] = list(
+            movs_periodo.values('tipo_beneficio__nombre').annotate(total=Sum('monto')).order_by('tipo_beneficio__nombre')
+        )
+        context['observaciones'] = list(
+            movs_periodo.exclude(observacion__isnull=True).exclude(observacion='').values(
+                'periodo', 'tipo_beneficio__nombre', 'observacion', 'monto'
+            )[:20]
+        )
+        context['historial_periodos'] = list(
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .values('periodo')
+            .annotate(total=Sum('monto'))
+            .order_by('-periodo')[:6]
+        )
+        return context
 
 
 # ==================== AUTENTICACIÓN ====================

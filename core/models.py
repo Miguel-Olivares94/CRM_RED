@@ -601,3 +601,304 @@ class UserProfile(BaseModel):
     @property
     def es_ejecutivo(self):
         return self.role == 'EJECUTIVO'
+
+
+class SocioSindicato(BaseModel):
+    """Socios del módulo sindical (aislado del CRM comercial)."""
+
+    ESTADO_LABORAL_ACTIVO = 'ACTIVO'
+    ESTADO_LABORAL_LICENCIA = 'LICENCIA_MEDICA'
+    ESTADO_LABORAL_DESVINCULADO = 'DESVINCULADO'
+    ESTADO_LABORAL_SUSPENDIDO = 'SUSPENDIDO'
+    ESTADO_LABORAL_CHOICES = [
+        (ESTADO_LABORAL_ACTIVO, 'Activo'),
+        (ESTADO_LABORAL_LICENCIA, 'Licencia médica'),
+        (ESTADO_LABORAL_DESVINCULADO, 'Desvinculado'),
+        (ESTADO_LABORAL_SUSPENDIDO, 'Suspendido'),
+    ]
+
+    ESTADO_ACTIVO = 'ACTIVO'
+    ESTADO_INACTIVO = 'INACTIVO'
+    ESTADO_CHOICES = [
+        (ESTADO_ACTIVO, 'Activo'),
+        (ESTADO_INACTIVO, 'Inactivo'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='socios_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    rut = models.CharField(max_length=20, verbose_name='RUT')
+    nombre = models.CharField(max_length=150, verbose_name='Nombre')
+    site = models.CharField(max_length=100, blank=True, null=True, verbose_name='Site')
+    estado_laboral = models.CharField(
+        max_length=20,
+        choices=ESTADO_LABORAL_CHOICES,
+        default=ESTADO_LABORAL_ACTIVO,
+        verbose_name='Estado laboral',
+    )
+    fecha_ingreso = models.DateField(blank=True, null=True, verbose_name='Fecha ingreso')
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_ACTIVO,
+        verbose_name='Estado',
+    )
+
+    class Meta:
+        verbose_name = 'Socio Sindicato'
+        verbose_name_plural = 'Socios Sindicato'
+        ordering = ['nombre']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'rut'], name='uniq_socio_sindicato_empresa_rut'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'rut']),
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'estado_laboral']),
+        ]
+
+    def __str__(self):
+        return f"{self.rut} - {self.nombre}"
+
+
+class TipoBeneficioSindicato(BaseModel):
+    """Catálogo de beneficios del módulo sindical."""
+
+    ESTADO_ACTIVO = 'ACTIVO'
+    ESTADO_INACTIVO = 'INACTIVO'
+    ESTADO_CHOICES = [
+        (ESTADO_ACTIVO, 'Activo'),
+        (ESTADO_INACTIVO, 'Inactivo'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='tipos_beneficio_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    codigo = models.CharField(max_length=40, verbose_name='Código')
+    nombre = models.CharField(max_length=120, verbose_name='Nombre')
+    orden_export = models.PositiveSmallIntegerField(default=100, verbose_name='Orden exportación')
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_ACTIVO,
+        verbose_name='Estado',
+    )
+
+    class Meta:
+        verbose_name = 'Tipo Beneficio Sindicato'
+        verbose_name_plural = 'Tipos Beneficio Sindicato'
+        ordering = ['orden_export', 'nombre']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'codigo'], name='uniq_tipo_benef_sind_empresa_codigo'),
+            models.UniqueConstraint(fields=['empresa', 'nombre'], name='uniq_tipo_benef_sind_empresa_nombre'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'orden_export']),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.empresa})"
+
+
+class MovimientoSindicato(BaseModel):
+    """Movimientos mensuales de descuentos sindicales por socio y beneficio."""
+
+    ESTADO_PENDIENTE = 'PENDIENTE'
+    ESTADO_VALIDADO = 'VALIDADO'
+    ESTADO_OBSERVADO = 'OBSERVADO'
+    ESTADO_RECHAZADO = 'RECHAZADO'
+    ESTADO_CHOICES = [
+        (ESTADO_PENDIENTE, 'Pendiente'),
+        (ESTADO_VALIDADO, 'Validado'),
+        (ESTADO_OBSERVADO, 'Observado'),
+        (ESTADO_RECHAZADO, 'Rechazado'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='movimientos_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    socio = models.ForeignKey(
+        'SocioSindicato',
+        on_delete=models.PROTECT,
+        related_name='movimientos',
+        verbose_name='Socio',
+    )
+    tipo_beneficio = models.ForeignKey(
+        'TipoBeneficioSindicato',
+        on_delete=models.PROTECT,
+        related_name='movimientos',
+        verbose_name='Tipo beneficio',
+    )
+    periodo = models.CharField(max_length=7, verbose_name='Periodo (YYYY-MM)')
+    monto = models.DecimalField(max_digits=12, decimal_places=0, verbose_name='Monto')
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_PENDIENTE,
+        verbose_name='Estado',
+    )
+    observacion = models.CharField(max_length=300, blank=True, null=True, verbose_name='Observación')
+    referencia_externa = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Referencia externa',
+    )
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_sindicato_creados',
+        verbose_name='Creado por',
+    )
+
+    class Meta:
+        verbose_name = 'Movimiento Sindicato'
+        verbose_name_plural = 'Movimientos Sindicato'
+        ordering = ['-periodo', '-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'socio', 'tipo_beneficio', 'periodo', 'referencia_externa'],
+                name='uniq_mov_sind_empresa_socio_benef_periodo_ref',
+            ),
+            models.CheckConstraint(check=models.Q(monto__gt=0), name='chk_mov_sind_monto_positivo'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'periodo']),
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'socio', 'periodo']),
+        ]
+
+    def __str__(self):
+        return f"{self.periodo} | {self.socio} | {self.tipo_beneficio.nombre}"
+
+
+class AuditoriaSindicato(BaseModel):
+    """Bitácora de eventos del módulo sindical."""
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='auditorias_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_sindicato',
+        verbose_name='Usuario',
+    )
+    accion = models.CharField(max_length=40, verbose_name='Acción')
+    entidad = models.CharField(max_length=60, verbose_name='Entidad')
+    entidad_id = models.CharField(max_length=40, verbose_name='ID entidad')
+    periodo = models.CharField(max_length=7, blank=True, null=True, verbose_name='Periodo')
+    resumen = models.CharField(max_length=255, verbose_name='Resumen')
+    payload = models.JSONField(default=dict, blank=True, verbose_name='Payload')
+    ip_origen = models.GenericIPAddressField(blank=True, null=True, verbose_name='IP origen')
+
+    class Meta:
+        verbose_name = 'Auditoría Sindicato'
+        verbose_name_plural = 'Auditorías Sindicato'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['empresa', 'created_at']),
+            models.Index(fields=['empresa', 'entidad', 'entidad_id']),
+            models.Index(fields=['empresa', 'periodo']),
+        ]
+
+    def __str__(self):
+        return f"{self.accion} | {self.entidad} | {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class ConsolidadoMensualSindicato(BaseModel):
+    """Preparación conceptual para sprint siguiente: cabecera de consolidado mensual."""
+
+    ESTADO_ABIERTO = 'ABIERTO'
+    ESTADO_CERRADO = 'CERRADO'
+    ESTADO_EXPORTADO = 'EXPORTADO'
+    ESTADO_CHOICES = [
+        (ESTADO_ABIERTO, 'Abierto'),
+        (ESTADO_CERRADO, 'Cerrado'),
+        (ESTADO_EXPORTADO, 'Exportado'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='consolidados_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    periodo = models.CharField(max_length=7, verbose_name='Periodo (YYYY-MM)')
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ABIERTO, verbose_name='Estado')
+    fecha_generacion = models.DateTimeField(blank=True, null=True, verbose_name='Fecha generación')
+    total_socios = models.PositiveIntegerField(default=0, verbose_name='Total socios')
+    total_monto = models.DecimalField(max_digits=14, decimal_places=0, default=0, verbose_name='Total monto')
+
+    class Meta:
+        verbose_name = 'Consolidado Mensual Sindicato'
+        verbose_name_plural = 'Consolidados Mensuales Sindicato'
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'periodo'], name='uniq_cons_mensual_sind_empresa_periodo'),
+            models.CheckConstraint(check=models.Q(total_monto__gte=0), name='chk_cons_sind_total_monto_nonneg'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'periodo']),
+        ]
+
+    def __str__(self):
+        return f"{self.empresa} | {self.periodo}"
+
+
+class ConsolidadoDetalleSindicato(BaseModel):
+    """Preparación conceptual para sprint siguiente: detalle socio x beneficio."""
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='consolidado_detalles_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    consolidado = models.ForeignKey(
+        'ConsolidadoMensualSindicato',
+        on_delete=models.CASCADE,
+        related_name='detalles',
+        verbose_name='Consolidado',
+    )
+    socio = models.ForeignKey('SocioSindicato', on_delete=models.PROTECT, related_name='consolidado_detalles')
+    tipo_beneficio = models.ForeignKey(
+        'TipoBeneficioSindicato', on_delete=models.PROTECT, related_name='consolidado_detalles'
+    )
+    monto_aprobado = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name='Monto aprobado')
+    motivo_ajuste = models.CharField(max_length=300, blank=True, null=True, verbose_name='Motivo ajuste')
+
+    class Meta:
+        verbose_name = 'Consolidado Detalle Sindicato'
+        verbose_name_plural = 'Consolidado Detalles Sindicato'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['consolidado', 'socio', 'tipo_beneficio'],
+                name='uniq_cons_det_sind_consolidado_socio_benef',
+            ),
+            models.CheckConstraint(check=models.Q(monto_aprobado__gte=0), name='chk_cons_det_sind_monto_nonneg'),
+        ]
+        indexes = [
+            models.Index(fields=['consolidado', 'socio']),
+            models.Index(fields=['consolidado', 'tipo_beneficio']),
+        ]
+
+    def __str__(self):
+        return f"{self.consolidado.periodo} | {self.socio} | {self.tipo_beneficio.nombre}"

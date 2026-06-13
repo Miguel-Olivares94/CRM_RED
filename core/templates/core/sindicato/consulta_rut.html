@@ -1,0 +1,45 @@
+{% extends 'core/base.html' %}
+{% block title %}Consulta por RUT Sindicato{% endblock %}
+{% block content %}
+<h2>Consulta por RUT</h2>
+<form method="get">
+  <input type="text" name="rut" value="{{ rut_buscado }}" placeholder="12.345.678-9">
+  <button type="submit">Buscar</button>
+</form>
+
+{% if socio %}
+  <h3>{{ socio.nombre }} ({{ socio.rut }})</h3>
+  <p>Estado laboral: {{ socio.get_estado_laboral_display }}</p>
+  <p>Periodo actual: {{ periodo_actual }}</p>
+  <p>Total periodo: {{ total_periodo }}</p>
+
+  <h4>Montos por beneficio</h4>
+  <ul>
+    {% for item in montos_por_beneficio %}
+      <li>{{ item.tipo_beneficio__nombre }}: {{ item.total }}</li>
+    {% empty %}
+      <li>Sin montos en el periodo actual</li>
+    {% endfor %}
+  </ul>
+
+  <h4>Observaciones</h4>
+  <ul>
+    {% for obs in observaciones %}
+      <li>{{ obs.periodo }} - {{ obs.tipo_beneficio__nombre }} - {{ obs.observacion }} ({{ obs.monto }})</li>
+    {% empty %}
+      <li>Sin observaciones</li>
+    {% endfor %}
+  </ul>
+
+  <h4>Últimos períodos</h4>
+  <ul>
+    {% for p in historial_periodos %}
+      <li>{{ p.periodo }}: {{ p.total }}</li>
+    {% empty %}
+      <li>Sin historial</li>
+    {% endfor %}
+  </ul>
+{% elif rut_buscado %}
+  <p>No se encontró socio para el RUT indicado.</p>
+{% endif %}
+{% endblock %}

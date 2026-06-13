@@ -1,0 +1,21 @@
+{% extends 'core/base.html' %}
+{% block title %}Socios Sindicato{% endblock %}
+{% block content %}
+<h2>Socios Sindicato</h2>
+<form method="get">
+  <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar RUT o nombre">
+  <button type="submit">Buscar</button>
+</form>
+<p>Total: {{ socios|length }}</p>
+<ul>
+  {% for socio in socios %}
+    <li>
+      {{ socio.rut }} - {{ socio.nombre }} ({{ socio.empresa.nombre }})
+      <a href="{% url 'core:sindicato_socio_update' socio.pk %}">Editar</a>
+    </li>
+  {% empty %}
+    <li>Sin socios</li>
+  {% endfor %}
+</ul>
+<a href="{% url 'core:sindicato_socio_create' %}">Nuevo socio</a>
+{% endblock %}

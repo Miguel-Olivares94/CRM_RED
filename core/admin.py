@@ -3,7 +3,9 @@ from django.utils.html import format_html
 from import_export.admin import ImportExportModelAdmin
 from .models import (
     Empresa, CampoPersonalizado, Cliente, Contacto, Oportunidad, Llamada,
-    MetaVentas, Comision, Seguimiento, UserProfile
+    MetaVentas, Comision, Seguimiento, UserProfile,
+    SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
+    AuditoriaSindicato, ConsolidadoMensualSindicato, ConsolidadoDetalleSindicato,
 )
 from .resources import ClienteResource, OportunidadResource
 
@@ -407,3 +409,51 @@ class CampoPersonalizadoAdmin(admin.ModelAdmin):
             except Exception:
                 pass
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(SocioSindicato)
+class SocioSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('rut', 'nombre', 'empresa', 'estado_laboral', 'estado')
+    list_filter = ('empresa', 'estado_laboral', 'estado')
+    search_fields = ('rut', 'nombre')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(TipoBeneficioSindicato)
+class TipoBeneficioSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nombre', 'empresa', 'orden_export', 'estado')
+    list_filter = ('empresa', 'estado')
+    search_fields = ('codigo', 'nombre')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(MovimientoSindicato)
+class MovimientoSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('periodo', 'socio', 'tipo_beneficio', 'monto', 'estado', 'empresa')
+    list_filter = ('empresa', 'periodo', 'estado', 'tipo_beneficio')
+    search_fields = ('socio__rut', 'socio__nombre', 'referencia_externa')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(AuditoriaSindicato)
+class AuditoriaSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'empresa', 'usuario', 'accion', 'entidad', 'entidad_id')
+    list_filter = ('empresa', 'accion', 'entidad', 'created_at')
+    search_fields = ('resumen', 'entidad_id', 'usuario__email')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(ConsolidadoMensualSindicato)
+class ConsolidadoMensualSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'periodo', 'estado', 'total_socios', 'total_monto', 'fecha_generacion')
+    list_filter = ('empresa', 'estado', 'periodo')
+    search_fields = ('periodo',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(ConsolidadoDetalleSindicato)
+class ConsolidadoDetalleSindicatoAdmin(admin.ModelAdmin):
+    list_display = ('consolidado', 'socio', 'tipo_beneficio', 'monto_aprobado', 'empresa')
+    list_filter = ('empresa', 'consolidado__periodo', 'tipo_beneficio')
+    search_fields = ('socio__rut', 'socio__nombre')
+    readonly_fields = ('created_at', 'updated_at')

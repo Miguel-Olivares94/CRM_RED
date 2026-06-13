@@ -1,4 +1,19 @@
-from .models import Cliente, Contacto, Oportunidad, Llamada, MetaVentas, Comision, Seguimiento, CampoPersonalizado
+import re
+
+from .models import (
+    Cliente,
+    Contacto,
+    Oportunidad,
+    Llamada,
+    MetaVentas,
+    Comision,
+    Seguimiento,
+    CampoPersonalizado,
+    ConsolidadoMensualSindicato,
+    MovimientoSindicato,
+    SocioSindicato,
+    TipoBeneficioSindicato,
+)
 from .chile_data import REGIONES_CHOICES, SECTORES_CHOICES, TIPO_CLIENTE_CHOICES, SI_NO_CHOICES, PRODUCTOS_CLARO_CHOICES
 from django import forms
 from django.contrib.auth import get_user_model
@@ -567,3 +582,231 @@ class CreateEjecutivoForm(forms.Form):
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Este correo ya está registrado.")
         return email
+
+
+# ==================== SINDICATO MVP ====================
+
+PERIODO_REGEX = re.compile(r'^\d{4}-(0[1-9]|1[0-2])$')
+
+
+def _normalizar_rut(rut):
+    if not rut:
+        return ''
+    limpio = re.sub(r'[^0-9kK]', '', str(rut)).upper()
+    if len(limpio) < 2:
+        return limpio
+    return f"{limpio[:-1]}-{limpio[-1]}"
+
+
+def _validar_rut_chileno(rut_normalizado):
+    if not rut_normalizado or '-' not in rut_normalizado:
+        return False
+    cuerpo, dv = rut_normalizado.split('-', 1)
+    if not cuerpo.isdigit() or not dv:
+        return False
+
+    dv = dv.upper()
+    suma = 0
+    multiplo = 2
+    for digito in reversed(cuerpo):
+        suma += int(digito) * multiplo
+        multiplo = multiplo + 1 if multiplo < 7 else 2
+
+    resto = 11 - (suma % 11)
+    dv_esperado = '0' if resto == 11 else 'K' if resto == 10 else str(resto)
+    return dv == dv_esperado
+
+
+class SocioSindicatoForm(forms.ModelForm):
+    class Meta:
+        model = SocioSindicato
+        fields = ['rut', 'nombre', 'site', 'estado_laboral', 'fecha_ingreso', 'estado']
+        widgets = {
+            'rut': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '12.345.678-9'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'site': forms.TextInput(attrs={'class': 'form-control'}),
+            'estado_laboral': forms.Select(attrs={'class': 'form-control'}),
+            'fecha_ingreso': DateInput(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+
+    def clean_rut(self):
+        rut = _normalizar_rut(self.cleaned_data.get('rut'))
+        if not _validar_rut_chileno(rut):
+            raise forms.ValidationError('RUT inválido.')
+
+        empresa = self.empresa or getattr(self.instance, 'empresa', None)
+        if empresa:
+            qs = SocioSindicato.objects.filter(empresa=empresa, rut=rut)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError('Ya existe un socio con ese RUT para esta empresa.')
+        return rut
+
+    def clean(self):
+        cleaned = super().clean()
+        if not self.empresa and not getattr(self.instance, 'empresa_id', None):
+            raise forms.ValidationError('Empresa es obligatoria para crear o editar socios sindicales.')
+        return cleaned
+
+
+class TipoBeneficioSindicatoForm(forms.ModelForm):
+    class Meta:
+        model = TipoBeneficioSindicato
+        fields = ['codigo', 'nombre', 'orden_export', 'estado']
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'orden_export': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+
+    def clean_codigo(self):
+        codigo = (self.cleaned_data.get('codigo') or '').strip().upper()
+        if not codigo:
+            raise forms.ValidationError('Código es obligatorio.')
+
+        empresa = self.empresa or getattr(self.instance, 'empresa', None)
+        if empresa:
+            qs = TipoBeneficioSindicato.objects.filter(empresa=empresa, codigo=codigo)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError('Ya existe un beneficio con ese código para esta empresa.')
+        return codigo
+
+    def clean_orden_export(self):
+        orden = self.cleaned_data.get('orden_export')
+        if orden is None or orden <= 0:
+            raise forms.ValidationError('El orden de exportación debe ser mayor a cero.')
+        return orden
+
+    def clean(self):
+        cleaned = super().clean()
+        if not self.empresa and not getattr(self.instance, 'empresa_id', None):
+            raise forms.ValidationError('Empresa es obligatoria para crear o editar beneficios sindicales.')
+        return cleaned
+
+
+class MovimientoSindicatoForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoSindicato
+        fields = ['socio', 'tipo_beneficio', 'periodo', 'monto', 'estado', 'observacion', 'referencia_externa']
+        widgets = {
+            'socio': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_beneficio': forms.Select(attrs={'class': 'form-control'}),
+            'periodo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'YYYY-MM'}),
+            'monto': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'referencia_externa': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, user=None, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.warnings = []
+        self.empresa = empresa
+
+        if self.empresa is None and user is not None:
+            try:
+                self.empresa = user.profile.empresa
+            except Exception:
+                self.empresa = None
+
+        if self.empresa is not None:
+            self.fields['socio'].queryset = SocioSindicato.objects.filter(empresa=self.empresa)
+            self.fields['tipo_beneficio'].queryset = TipoBeneficioSindicato.objects.filter(empresa=self.empresa)
+        else:
+            self.fields['socio'].queryset = SocioSindicato.objects.none()
+            self.fields['tipo_beneficio'].queryset = TipoBeneficioSindicato.objects.none()
+
+    def _warn(self, message):
+        self.warnings.append(message)
+
+    def clean_periodo(self):
+        periodo = (self.cleaned_data.get('periodo') or '').strip()
+        if not periodo:
+            raise forms.ValidationError('Periodo es obligatorio.')
+        if not PERIODO_REGEX.match(periodo):
+            raise forms.ValidationError('Periodo inválido. Usa formato YYYY-MM.')
+        return periodo
+
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        if monto is None or monto <= 0:
+            raise forms.ValidationError('El monto debe ser mayor a cero.')
+        return monto
+
+    def clean_referencia_externa(self):
+        return (self.cleaned_data.get('referencia_externa') or '').strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        empresa = self.empresa
+        socio = cleaned.get('socio')
+        tipo_beneficio = cleaned.get('tipo_beneficio')
+        periodo = cleaned.get('periodo')
+        monto = cleaned.get('monto')
+        observacion = (cleaned.get('observacion') or '').strip()
+        referencia = cleaned.get('referencia_externa') or ''
+
+        if not empresa:
+            raise forms.ValidationError('Empresa de usuario es obligatoria para registrar movimientos sindicales.')
+
+        if socio and socio.empresa_id != empresa.id:
+            self.add_error('socio', 'El socio no pertenece a la empresa del usuario.')
+
+        if tipo_beneficio:
+            if tipo_beneficio.empresa_id != empresa.id:
+                self.add_error('tipo_beneficio', 'El beneficio no pertenece a la empresa del usuario.')
+            if tipo_beneficio.estado != TipoBeneficioSindicato.ESTADO_ACTIVO:
+                self.add_error('tipo_beneficio', 'No se permiten movimientos para beneficios inactivos.')
+
+        if periodo:
+            cerrado = ConsolidadoMensualSindicato.objects.filter(
+                empresa=empresa,
+                periodo=periodo,
+                estado__in=[
+                    ConsolidadoMensualSindicato.ESTADO_CERRADO,
+                    ConsolidadoMensualSindicato.ESTADO_EXPORTADO,
+                ],
+            ).exists()
+            if cerrado:
+                self.add_error('periodo', 'El periodo está cerrado para nuevos movimientos.')
+
+        if socio and tipo_beneficio and periodo:
+            base_qs = MovimientoSindicato.objects.filter(
+                empresa=empresa,
+                socio=socio,
+                tipo_beneficio=tipo_beneficio,
+                periodo=periodo,
+            )
+            if self.instance.pk:
+                base_qs = base_qs.exclude(pk=self.instance.pk)
+
+            if referencia:
+                if base_qs.filter(referencia_externa=referencia).exists():
+                    self.add_error('referencia_externa', 'Ya existe un movimiento con la misma referencia externa.')
+            else:
+                potenciales = base_qs.filter(referencia_externa='')
+                if potenciales.exists():
+                    mismo_monto = potenciales.filter(monto=monto).exists() if monto is not None else False
+                    if mismo_monto and not observacion:
+                        self._warn(
+                            'Posible duplicado detectado (mismo socio, beneficio, periodo y monto sin referencia externa).'
+                        )
+                    # Evita colisión del constraint DB cuando referencia_externa viene vacía.
+                    cleaned['referencia_externa'] = f"AUTO-{periodo}-{socio.id}-{tipo_beneficio.id}-{potenciales.count() + 1}"
+                    self._warn('Se asignó referencia automática para evitar colisión de duplicado sin referencia externa.')
+
+        return cleaned
