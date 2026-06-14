@@ -47,6 +47,7 @@ from .services.sindicato_consolidado import (
 )
 from .services.sindicato_exportacion import ConsolidadoExportacionError, exportar_consolidado_excel
 from .services.sindicato_fuentes import parsear_filas_por_fuente
+from .services.sindicato_prevalidacion import prevalidar_movimientos_para_consolidado
 
 
 def _build_supervisor_ejecutivos_json():
@@ -2932,6 +2933,15 @@ class ConsolidadoSindicatoGenerarView(SindicatoTenantMixin, SindicatoRolePermiss
             return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
 
         try:
+            pre = prevalidar_movimientos_para_consolidado(empresa=empresa, periodo=periodo, usuario=request.user)
+            if pre.observados_licencia or pre.excluidos_baja_despedido:
+                messages.info(
+                    request,
+                    (
+                        f"Prevalidacion {periodo}: licencia observada={pre.observados_licencia}, "
+                        f"excluidos por baja/despedido={pre.excluidos_baja_despedido}."
+                    ),
+                )
             resultado = generar_o_recalcular_consolidado(empresa=empresa, periodo=periodo, usuario=request.user)
             messages.success(
                 request,
@@ -2953,6 +2963,15 @@ class ConsolidadoSindicatoRecalcularView(SindicatoTenantMixin, SindicatoRolePerm
             return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
 
         try:
+            pre = prevalidar_movimientos_para_consolidado(empresa=empresa, periodo=periodo, usuario=request.user)
+            if pre.observados_licencia or pre.excluidos_baja_despedido:
+                messages.info(
+                    request,
+                    (
+                        f"Prevalidacion {periodo}: licencia observada={pre.observados_licencia}, "
+                        f"excluidos por baja/despedido={pre.excluidos_baja_despedido}."
+                    ),
+                )
             resultado = recalcular_consolidado_abierto(empresa=empresa, periodo=periodo, usuario=request.user)
             messages.success(
                 request,

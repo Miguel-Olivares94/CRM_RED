@@ -605,6 +605,66 @@ class SindicatoConsolidadoViewsTests(TestCase):
             ).exists()
         )
 
+    def test_generar_aplica_prevalidacion_licencia_y_baja(self):
+        socio_lic = SocioSindicato.objects.create(
+            empresa=self.empresa_a,
+            rut='22222222-2',
+            nombre='Socio Licencia',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        socio_baja = SocioSindicato.objects.create(
+            empresa=self.empresa_a,
+            rut='33333333-3',
+            nombre='Socio Baja',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        mov_lic = MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=socio_lic,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-10',
+            monto=10000,
+            estado=MovimientoSindicato.ESTADO_PENDIENTE,
+            observacion='licencia medica',
+            referencia_externa='PREV-LIC-1',
+        )
+        mov_baja = MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=socio_baja,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-10',
+            monto=12000,
+            estado=MovimientoSindicato.ESTADO_PENDIENTE,
+            observacion='baja',
+            referencia_externa='PREV-BAJA-1',
+        )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': '2026-10'})
+        self.assertEqual(resp.status_code, 302)
+
+        mov_lic.refresh_from_db()
+        mov_baja.refresh_from_db()
+        socio_lic.refresh_from_db()
+        socio_baja.refresh_from_db()
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-10')
+
+        self.assertEqual(mov_lic.estado, MovimientoSindicato.ESTADO_OBSERVADO)
+        self.assertEqual(socio_lic.estado_laboral, SocioSindicato.ESTADO_LABORAL_LICENCIA)
+        self.assertEqual(mov_baja.estado, MovimientoSindicato.ESTADO_RECHAZADO)
+        self.assertEqual(socio_baja.estado_laboral, SocioSindicato.ESTADO_LABORAL_DESVINCULADO)
+        self.assertEqual(cons.total_socios, 1)
+        self.assertEqual(cons.total_monto, 10000)
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='PREVALIDAR_CONSOLIDADO',
+                periodo='2026-10',
+            ).exists()
+        )
+
     def test_detalle_consolidado_renderiza_sin_nameerror(self):
         MovimientoSindicato.objects.create(
             empresa=self.empresa_a,
