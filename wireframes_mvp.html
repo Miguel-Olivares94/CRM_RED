@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframes MVP — Plataforma Sindical</title>
+<style>
+  /* ─── Reset & Base ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+
+  /* ─── Layout ─── */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    width: 220px; min-width: 220px; background: #1a1a2e; color: #cdd6e8;
+    display: flex; flex-direction: column; padding: 0; overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 20px 18px 16px; background: #12122a; border-bottom: 1px solid #2c2c4a;
+  }
+  .sidebar-logo .logo-title { font-size: 15px; font-weight: 700; color: #fff; }
+  .sidebar-logo .logo-sub { font-size: 11px; color: #7a8aaa; margin-top: 2px; }
+  .sidebar-section { padding: 12px 12px 4px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; color: #5a6a8a; font-weight: 700; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 18px;
+    cursor: pointer; border-radius: 0; color: #9aaac0; font-size: 13px;
+    transition: all 0.15s; border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: #232340; color: #e0e8f8; }
+  .nav-item.active { background: #232340; color: #6eb5ff; border-left-color: #6eb5ff; font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ─── Main content ─── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ─── Topbar ─── */
+  .topbar {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-size: 17px; font-weight: 700; color: #1a1a2e; flex: 1; }
+  .topbar-periodo {
+    background: #f0f7ff; border: 1px solid #b3d4f5; color: #1a6ab5;
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .topbar-user {
+    width: 34px; height: 34px; background: #1a1a2e; color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+
+  /* ─── Content area ─── */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ─── Cards / Panels ─── */
+  .card {
+    background: #fff; border-radius: 10px; border: 1px solid #e2e8f0;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px; }
+  .card-title span { color: #888; font-weight: 400; font-size: 12px; }
+
+  /* ─── KPI Grid ─── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .kpi-card {
+    background: #fff; border-radius: 10px; border: 1px solid #e2e8f0;
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .kpi-value { font-size: 26px; font-weight: 800; color: #1a1a2e; }
+  .kpi-sub { font-size: 11px; color: #5a8adb; font-weight: 500; }
+  .kpi-card.warn .kpi-value { color: #e67e22; }
+  .kpi-card.danger .kpi-value { color: #e74c3c; }
+  .kpi-card.ok .kpi-value { color: #27ae60; }
+
+  /* ─── Tables ─── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f7f8fb; color: #555; font-weight: 700; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px;
+    border-bottom: 2px solid #e2e8f0; text-align: left; white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+  tr:hover td { background: #f7f9ff; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-green { background: #e6f9ee; color: #1a7a40; }
+  .badge-red { background: #fdecea; color: #c0392b; }
+  .badge-yellow { background: #fef9e7; color: #b7770d; }
+  .badge-blue { background: #e8f0fe; color: #1a5db5; }
+  .badge-gray { background: #f0f2f5; color: #555; }
+  .badge-orange { background: #fef3e7; color: #d35400; }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: #1a6ab5; color: #fff; }
+  .btn-primary:hover { background: #155a9a; }
+  .btn-success { background: #1a7a40; color: #fff; }
+  .btn-success:hover { background: #155e33; }
+  .btn-warning { background: #e67e22; color: #fff; }
+  .btn-outline { background: #fff; color: #1a6ab5; border: 1.5px solid #1a6ab5; }
+  .btn-outline:hover { background: #e8f0fe; }
+  .btn-danger { background: #e74c3c; color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-xs { padding: 2px 8px; font-size: 11px; border-radius: 5px; }
+
+  /* ─── Forms ─── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 12px; font-weight: 600; color: #555; }
+  .form-label .req { color: #e74c3c; }
+  .form-input, .form-select, .form-textarea {
+    padding: 8px 12px; border: 1.5px solid #dce3ef; border-radius: 7px;
+    font-size: 13px; color: #1a1a2e; background: #fff; outline: none;
+    transition: border 0.15s;
+  }
+  .form-input:focus, .form-select:focus { border-color: #1a6ab5; }
+  .form-input.error { border-color: #e74c3c; }
+  .form-hint { font-size: 11px; color: #888; }
+  .form-error { font-size: 11px; color: #e74c3c; font-weight: 600; }
+
+  /* ─── Toolbar ─── */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px; background: #fff;
+    border: 1.5px solid #dce3ef; border-radius: 7px; padding: 7px 12px;
+    flex: 1; max-width: 320px;
+  }
+  .search-icon { color: #aaa; font-size: 15px; }
+  .search-input { border: none; outline: none; font-size: 13px; color: #1a1a2e; width: 100%; background: transparent; }
+
+  /* ─── Status bar ─── */
+  .status-bar {
+    background: #fff7e6; border: 1px solid #ffd591; border-radius: 8px;
+    padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; font-size: 13px;
+  }
+  .status-bar.info { background: #e8f0fe; border-color: #b3cef5; }
+  .status-bar.success { background: #e6f9ee; border-color: #a3d9b5; }
+  .status-bar.danger { background: #fdecea; border-color: #f5b3ad; }
+
+  /* ─── Consolidado pivot ─── */
+  .pivot-table th { font-size: 10px; padding: 8px 10px; }
+  .pivot-table td { font-size: 12px; padding: 8px 10px; text-align: right; }
+  .pivot-table td:first-child, .pivot-table td:nth-child(2) { text-align: left; }
+  .pivot-table tfoot td { font-weight: 800; background: #f0f7ff; border-top: 2px solid #1a6ab5; }
+  .pivot-table .total-col { background: #f0f7ff; font-weight: 700; }
+
+  /* ─── Section header ─── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-header h2 { font-size: 16px; font-weight: 700; }
+
+  /* ─── Breadcrumb ─── */
+  .breadcrumb { font-size: 12px; color: #888; margin-bottom: 16px; }
+  .breadcrumb a { color: #1a6ab5; cursor: pointer; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* ─── Timeline / steps ─── */
+  .steps { display: flex; align-items: center; gap: 0; margin-bottom: 20px; }
+  .step { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .step-circle {
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .step-circle.done { background: #1a7a40; color: #fff; }
+  .step-circle.active { background: #1a6ab5; color: #fff; }
+  .step-circle.pending { background: #e2e8f0; color: #888; }
+  .step-label { font-size: 11px; font-weight: 600; }
+  .step-label.done { color: #1a7a40; }
+  .step-label.active { color: #1a6ab5; }
+  .step-label.pending { color: #aaa; }
+  .step-line { flex: 1; height: 2px; background: #e2e8f0; max-width: 40px; }
+  .step-line.done { background: #1a7a40; }
+
+  /* ─── Alert box ─── */
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .alert-warning { background: #fff7e6; border: 1px solid #ffd591; color: #7a4a00; }
+  .alert-info { background: #e8f0fe; border: 1px solid #b3cef5; color: #1a3a7a; }
+  .alert-success { background: #e6f9ee; border: 1px solid #a3d9b5; color: #1a5a2a; }
+  .alert-danger { background: #fdecea; border: 1px solid #f5b3ad; color: #7a1a1a; }
+
+  /* ─── Screen selector nav (top pills) ─── */
+  .screen-tabs {
+    display: none; /* navigation via sidebar only */
+  }
+
+  /* ─── Pagination ─── */
+  .pagination { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 12px; }
+  .page-btn {
+    width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; cursor: pointer; border: 1.5px solid #e2e8f0;
+    background: #fff; color: #555;
+  }
+  .page-btn.active { background: #1a6ab5; color: #fff; border-color: #1a6ab5; }
+
+  /* ─── Avatar ─── */
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: #e8f0fe; color: #1a6ab5;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* ─── Divider ─── */
+  .divider { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+
+  /* ─── Consolidado exportacion preview ─── */
+  .export-preview {
+    background: #fffef5; border: 1.5px dashed #f5c842; border-radius: 8px;
+    padding: 16px; margin-top: 12px;
+  }
+  .export-preview table th { background: #1a1a2e; color: #fff; font-size: 11px; }
+  .export-preview table td { font-size: 11px; background: #fff; }
+  .export-preview table tr:last-child td { background: #e8f0fe; font-weight: 700; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Nota de wireframe ─── */
+  .wf-note {
+    position: fixed; bottom: 12px; right: 16px; background: #1a1a2e; color: #cdd6e8;
+    font-size: 11px; padding: 6px 14px; border-radius: 20px; z-index: 999; opacity: 0.75;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══════════════════════ SIDEBAR ══════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-title">🏛️ SindiApp</div>
+      <div class="logo-sub">Sindicato DHL — 2026</div>
+    </div>
+
+    <div class="sidebar-section">Principal</div>
+    <div class="nav-item active" onclick="show('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+
+    <div class="sidebar-section">Maestros</div>
+    <div class="nav-item" onclick="show('socios')">
+      <span class="nav-icon">👥</span> Socios
+    </div>
+    <div class="nav-item" onclick="show('beneficios')">
+      <span class="nav-icon">🏷️</span> Tipos de Beneficio
+    </div>
+
+    <div class="sidebar-section">Operación</div>
+    <div class="nav-item" onclick="show('movimientos')">
+      <span class="nav-icon">📝</span> Movimientos
+    </div>
+    <div class="nav-item" onclick="show('validaciones')">
+      <span class="nav-icon">⚠️</span> Validaciones
+      <span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:12px;">3</span>
+    </div>
+
+    <div class="sidebar-section">Consolidado</div>
+    <div class="nav-item" onclick="show('consolidado')">
+      <span class="nav-icon">📋</span> Consolidado Mensual
+    </div>
+    <div class="nav-item" onclick="show('exportacion')">
+      <span class="nav-icon">📤</span> Exportación Excel
+    </div>
+
+    <div class="sidebar-section">Admin</div>
+    <div class="nav-item" onclick="show('usuarios')">
+      <span class="nav-icon">🔑</span> Usuarios y Roles
+    </div>
+    <div class="nav-item" onclick="show('auditoria')">
+      <span class="nav-icon">📜</span> Auditoría
+    </div>
+  </aside>
+
+  <!-- ══════════════════════ MAIN ══════════════════════ -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-periodo">📅 Periodo: 2026-06</div>
+      <div style="font-size:12px;color:#888;">Tesorería · María López</div>
+      <div class="topbar-user">ML</div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- ════════════════ SCREEN 1: DASHBOARD ════════════════ -->
+      <div class="screen active" id="s-dashboard">
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi-card ok">
+            <div class="kpi-label">Socios con descuento</div>
+            <div class="kpi-value">412</div>
+            <div class="kpi-sub">↑ 8 vs mes anterior</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total descontado</div>
+            <div class="kpi-value">$38.4M</div>
+            <div class="kpi-sub">CLP · Junio 2026</div>
+          </div>
+          <div class="kpi-card warn">
+            <div class="kpi-label">Observaciones pendientes</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-sub">Requieren revisión</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Estado consolidado</div>
+            <div class="kpi-value" style="font-size:18px;margin-top:4px;">
+              <span class="badge badge-yellow">Borrador</span>
+            </div>
+            <div class="kpi-sub">No exportado aún</div>
+          </div>
+        </div>
+
+        <!-- 2 columnas: tabla beneficios + estado proceso -->
+        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;">
+
+          <div class="card">
+            <div class="card-title">📊 Resumen por beneficio — Junio 2026</div>
+            <table>
+              <thead>
+                <tr><th>Beneficio</th><th>Socios</th><th>Total CLP</th><th>Estado</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Gas</td><td>312</td><td>$9.360.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Telefonía</td><td>88</td><td>$6.248.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Copeuch</td><td>76</td><td>$7.980.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Confía</td><td>44</td><td>$4.400.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Deuda Sindical</td><td>412</td><td>$4.120.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Óptica</td><td>18</td><td>$1.980.000</td><td><span class="badge badge-yellow">Obs.</span></td></tr>
+                <tr><td>Happyland</td><td>32</td><td>$2.240.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Mochilas</td><td>15</td><td>$1.050.000</td><td><span class="badge badge-green">OK</span></td></tr>
+                <tr><td>Veterinaria</td><td>27</td><td>$945.000</td><td><span class="badge badge-green">OK</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="card-title">🔄 Estado del proceso</div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:18px;">✅</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;">Movimientos registrados</div>
+                    <div style="font-size:11px;color:#888;">847 movimientos · Junio 2026</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:18px;">⚠️</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;color:#e67e22;">Validaciones pendientes</div>
+                    <div style="font-size:11px;color:#888;">3 observaciones por resolver</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:18px;">⏳</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;color:#aaa;">Consolidado no generado</div>
+                    <div style="font-size:11px;color:#888;">Requiere cerrar observaciones</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:18px;">⏳</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;color:#aaa;">Exportación pendiente</div>
+                    <div style="font-size:11px;color:#888;">Fecha límite: 25 Jun 2026</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">⚡ Acciones rápidas</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-primary" onclick="show('movimientos')">+ Registrar movimiento</button>
+                <button class="btn btn-outline" onclick="show('validaciones')">Ver observaciones (3)</button>
+                <button class="btn btn-outline" onclick="show('consolidado')">Ir a Consolidado</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ultimas exportaciones -->
+        <div class="card">
+          <div class="card-title">📤 Últimas exportaciones</div>
+          <table>
+            <thead>
+              <tr><th>Archivo</th><th>Periodo</th><th>Socios</th><th>Total</th><th>Exportado por</th><th>Fecha</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>📄 CONSOLIDADO_SINDICATO01_202605_v1.xlsx</td>
+                <td>2026-05</td><td>408</td><td>$37.1M</td>
+                <td><span class="avatar">ML</span> M. López</td>
+                <td>2026-05-24 09:15</td>
+              </tr>
+              <tr>
+                <td>📄 CONSOLIDADO_SINDICATO01_202604_v2.xlsx</td>
+                <td>2026-04</td><td>401</td><td>$36.4M</td>
+                <td><span class="avatar">ML</span> M. López</td>
+                <td>2026-04-23 11:02</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 2: SOCIOS ════════════════ -->
+      <div class="screen" id="s-socios">
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" placeholder="Buscar por RUT o nombre..." value="">
+          </div>
+          <select class="form-select" style="width:160px;">
+            <option>Todos los estados</option>
+            <option>Activo</option>
+            <option>Licencia médica</option>
+            <option>Desvinculado</option>
+            <option>Suspendido</option>
+          </select>
+          <select class="form-select" style="width:140px;">
+            <option>Todos los sites</option>
+            <option>Santiago</option>
+            <option>Pudahuel</option>
+            <option>Valparaíso</option>
+          </select>
+          <div style="flex:1"></div>
+          <button class="btn btn-outline">📥 Importar</button>
+          <button class="btn btn-primary" onclick="show('socio-form')">+ Nuevo Socio</button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:14px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:600;">412 socios encontrados</div>
+            <div style="font-size:12px;color:#888;">Mostrando 1–20</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>RUT</th><th>Nombre</th><th>Site</th>
+                  <th>Estado Laboral</th><th>Ingreso</th><th>Estado</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>12.345.678-9</td><td><b>Alejandro Fuentes</b></td><td>Pudahuel</td>
+                  <td><span class="badge badge-green">Activo</span></td><td>2018-03-01</td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td><button class="btn btn-outline btn-xs" onclick="show('socio-form')">✏️ Editar</button></td>
+                </tr>
+                <tr>
+                  <td>11.222.333-4</td><td><b>Carla Morales</b></td><td>Santiago</td>
+                  <td><span class="badge badge-yellow">Licencia médica</span></td><td>2020-07-15</td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td><button class="btn btn-outline btn-xs" onclick="show('socio-form')">✏️ Editar</button></td>
+                </tr>
+                <tr>
+                  <td>14.567.890-2</td><td><b>Jorge Vargas</b></td><td>Pudahuel</td>
+                  <td><span class="badge badge-red">Desvinculado</span></td><td>2015-11-20</td>
+                  <td><span class="badge badge-gray">Inactivo</span></td>
+                  <td><button class="btn btn-outline btn-xs" onclick="show('socio-form')">✏️ Editar</button></td>
+                </tr>
+                <tr>
+                  <td>16.123.456-7</td><td><b>Rosa Díaz</b></td><td>Valparaíso</td>
+                  <td><span class="badge badge-green">Activo</span></td><td>2022-01-10</td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td><button class="btn btn-outline btn-xs" onclick="show('socio-form')">✏️ Editar</button></td>
+                </tr>
+                <tr>
+                  <td>17.890.123-5</td><td><b>Pedro Soto</b></td><td>Santiago</td>
+                  <td><span class="badge badge-orange">Suspendido</span></td><td>2019-04-22</td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td><button class="btn btn-outline btn-xs" onclick="show('socio-form')">✏️ Editar</button></td>
+                </tr>
+                <tr>
+                  <td>18.456.789-3</td><td><b>Ana Gómez</b></td><td>Pudahuel</td>
+                  <td><span class="badge badge-green">Activo</span></td><td>2021-09-05</td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td><button class="btn btn-outline btn-xs">✏️ Editar</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 20px;border-top:1px solid #f0f2f5;">
+            <div class="pagination">
+              <div class="page-btn">‹</div>
+              <div class="page-btn active">1</div>
+              <div class="page-btn">2</div>
+              <div class="page-btn">3</div>
+              <div class="page-btn">…</div>
+              <div class="page-btn">21</div>
+              <div class="page-btn">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 3: SOCIO FORMULARIO ════════════════ -->
+      <div class="screen" id="s-socio-form">
+        <div class="breadcrumb"><a onclick="show('socios')">Socios</a> › Editar socio</div>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+          <div>
+            <div class="card">
+              <div class="card-title">👤 Datos del socio</div>
+              <div class="form-grid" style="gap:16px;">
+                <div class="form-group">
+                  <label class="form-label">RUT <span class="req">*</span></label>
+                  <input class="form-input" value="12.345.678-9" placeholder="12.345.678-9">
+                  <span class="form-hint">Formato: 12.345.678-9 · Validado con módulo 11</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nombre completo <span class="req">*</span></label>
+                  <input class="form-input" value="Alejandro Fuentes Rojas">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Site <span class="req">*</span></label>
+                  <select class="form-select">
+                    <option>Pudahuel</option>
+                    <option>Santiago</option>
+                    <option>Valparaíso</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Fecha de ingreso <span class="req">*</span></label>
+                  <input class="form-input" type="date" value="2018-03-01">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Estado laboral <span class="req">*</span></label>
+                  <select class="form-select">
+                    <option selected>Activo</option>
+                    <option>Licencia médica</option>
+                    <option>Desvinculado</option>
+                    <option>Suspendido</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Estado del registro <span class="req">*</span></label>
+                  <select class="form-select">
+                    <option selected>Activo</option>
+                    <option>Inactivo</option>
+                  </select>
+                </div>
+              </div>
+              <hr class="divider">
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn btn-outline" onclick="show('socios')">Cancelar</button>
+                <button class="btn btn-primary">💾 Guardar cambios</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="card-title">📊 Historial reciente</div>
+              <div style="font-size:12px;color:#888;margin-bottom:8px;">Últimos 3 meses</div>
+              <table>
+                <thead><tr><th>Periodo</th><th>Total</th></tr></thead>
+                <tbody>
+                  <tr><td>2026-05</td><td>$42.500</td></tr>
+                  <tr><td>2026-04</td><td>$38.000</td></tr>
+                  <tr><td>2026-03</td><td>$42.500</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card">
+              <div class="card-title">📋 Estado actual</div>
+              <div style="font-size:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="color:#888;">Beneficios activos</span><span style="font-weight:700;">4</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="color:#888;">Última modificación</span><span>2026-05-30</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="color:#888;">Modificado por</span><span>M. López</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 4: TIPOS DE BENEFICIO ════════════════ -->
+      <div class="screen" id="s-beneficios">
+
+        <div class="toolbar">
+          <div style="flex:1"></div>
+          <button class="btn btn-primary">+ Nuevo Tipo de Beneficio</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🏷️ Catálogo de tipos de beneficio <span>(14 registros)</span></div>
+          <table>
+            <thead>
+              <tr><th>Código</th><th>Nombre</th><th>Orden export</th><th>Estado</th><th>Movimientos mes</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>GAS</td><td><b>Gas</b></td><td style="text-align:center;">1</td><td><span class="badge badge-green">Activo</span></td><td>312</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>TEL</td><td><b>Telefonía</b></td><td style="text-align:center;">2</td><td><span class="badge badge-green">Activo</span></td><td>88</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>COP</td><td><b>Copeuch</b></td><td style="text-align:center;">3</td><td><span class="badge badge-green">Activo</span></td><td>76</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>CON</td><td><b>Confía</b></td><td style="text-align:center;">4</td><td><span class="badge badge-green">Activo</span></td><td>44</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>DS</td><td><b>Deuda Sindical</b></td><td style="text-align:center;">5</td><td><span class="badge badge-green">Activo</span></td><td>412</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>OPT</td><td><b>Óptica</b></td><td style="text-align:center;">6</td><td><span class="badge badge-green">Activo</span></td><td>18</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>HAP</td><td><b>Happyland</b></td><td style="text-align:center;">7</td><td><span class="badge badge-green">Activo</span></td><td>32</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>MOC</td><td><b>Mochilas</b></td><td style="text-align:center;">8</td><td><span class="badge badge-green">Activo</span></td><td>15</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>VET</td><td><b>Veterinaria</b></td><td style="text-align:center;">9</td><td><span class="badge badge-green">Activo</span></td><td>27</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>AYU</td><td><b>Ayuda Trabajador</b></td><td style="text-align:center;">10</td><td><span class="badge badge-green">Activo</span></td><td>9</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+              <tr><td>GIM</td><td><b>Gimnasio</b></td><td style="text-align:center;">11</td><td><span class="badge badge-gray">Inactivo</span></td><td>0</td><td><button class="btn btn-outline btn-xs">✏️ Editar</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="alert alert-info">
+          💡 El orden de exportación define el orden de columnas en el archivo Excel generado. Arrástralo para modificarlo.
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 5: MOVIMIENTOS ════════════════ -->
+      <div class="screen" id="s-movimientos">
+
+        <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="show('movimiento-form')">+ Registrar movimiento</button>
+          <button class="btn btn-outline">📥 Importar lote</button>
+          <div style="flex:1"></div>
+          <select class="form-select" style="width:150px;">
+            <option>Periodo: 2026-06</option>
+            <option>2026-05</option>
+            <option>2026-04</option>
+          </select>
+          <select class="form-select" style="width:160px;">
+            <option>Todos los beneficios</option>
+            <option>Gas</option>
+            <option>Telefonía</option>
+            <option>Copeuch</option>
+          </select>
+          <select class="form-select" style="width:140px;">
+            <option>Todos los estados</option>
+            <option>Pendiente</option>
+            <option>Validado</option>
+            <option>Observado</option>
+            <option>Rechazado</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div class="kpi-card"><div class="kpi-label">Movimientos</div><div class="kpi-value" style="font-size:22px;">847</div></div>
+          <div class="kpi-card ok"><div class="kpi-label">Validados</div><div class="kpi-value" style="font-size:22px;">834</div></div>
+          <div class="kpi-card warn"><div class="kpi-label">Observados</div><div class="kpi-value" style="font-size:22px;">3</div></div>
+          <div class="kpi-card danger"><div class="kpi-label">Rechazados</div><div class="kpi-value" style="font-size:22px;">10</div></div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>RUT</th><th>Socio</th><th>Beneficio</th><th>Periodo</th><th>Monto</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>12.345.678-9</td><td>Alejandro Fuentes</td><td>Gas</td><td>2026-06</td>
+                  <td style="text-align:right;font-weight:600;">$30.000</td>
+                  <td><span class="badge badge-green">Validado</span></td>
+                  <td>—</td><td><button class="btn btn-outline btn-xs">Ver</button></td>
+                </tr>
+                <tr>
+                  <td>11.222.333-4</td><td>Carla Morales</td><td>Óptica</td><td>2026-06</td>
+                  <td style="text-align:right;font-weight:600;">$110.000</td>
+                  <td><span class="badge badge-yellow">Observado</span></td>
+                  <td>Socio en licencia médica</td>
+                  <td><button class="btn btn-warning btn-xs" onclick="show('validaciones')">Revisar</button></td>
+                </tr>
+                <tr>
+                  <td>16.123.456-7</td><td>Rosa Díaz</td><td>Copeuch</td><td>2026-06</td>
+                  <td style="text-align:right;font-weight:600;">$85.000</td>
+                  <td><span class="badge badge-green">Validado</span></td>
+                  <td>—</td><td><button class="btn btn-outline btn-xs">Ver</button></td>
+                </tr>
+                <tr>
+                  <td>14.567.890-2</td><td>Jorge Vargas</td><td>Gas</td><td>2026-06</td>
+                  <td style="text-align:right;font-weight:600;">$30.000</td>
+                  <td><span class="badge badge-red">Rechazado</span></td>
+                  <td>Socio desvinculado</td>
+                  <td><button class="btn btn-outline btn-xs">Ver</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:10px 20px;border-top:1px solid #f0f2f5;">
+            <div class="pagination">
+              <div class="page-btn active">1</div>
+              <div class="page-btn">2</div>
+              <div class="page-btn">3</div>
+              <div class="page-btn">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 5b: MOVIMIENTO FORM ════════════════ -->
+      <div class="screen" id="s-movimiento-form">
+        <div class="breadcrumb"><a onclick="show('movimientos')">Movimientos</a> › Registrar movimiento</div>
+
+        <div style="max-width:640px;">
+          <div class="card">
+            <div class="card-title">📝 Nuevo movimiento</div>
+            <div class="form-grid">
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label">RUT del socio <span class="req">*</span></label>
+                <input class="form-input" placeholder="12.345.678-9">
+                <span class="form-hint">Ingresa el RUT para autocompletar el nombre</span>
+              </div>
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label">Nombre</label>
+                <input class="form-input" placeholder="Se completa automáticamente" style="background:#f7f8fb;" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de beneficio <span class="req">*</span></label>
+                <select class="form-select">
+                  <option>— Seleccionar —</option>
+                  <option>Gas</option>
+                  <option>Telefonía</option>
+                  <option>Copeuch</option>
+                  <option>Confía</option>
+                  <option>Deuda Sindical</option>
+                  <option>Óptica</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Periodo <span class="req">*</span></label>
+                <input class="form-input" value="2026-06" placeholder="YYYY-MM">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Monto (CLP) <span class="req">*</span></label>
+                <input class="form-input" placeholder="$0">
+                <span class="form-hint">Solo montos positivos</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Referencia externa</label>
+                <input class="form-input" placeholder="Opcional (ID, folio, etc.)">
+              </div>
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label">Observación</label>
+                <textarea class="form-textarea" rows="2" placeholder="Comentario opcional..."></textarea>
+              </div>
+            </div>
+            <hr class="divider">
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+              <button class="btn btn-outline" onclick="show('movimientos')">Cancelar</button>
+              <button class="btn btn-primary">💾 Registrar movimiento</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 6: VALIDACIONES ════════════════ -->
+      <div class="screen" id="s-validaciones">
+
+        <div class="alert alert-warning">
+          ⚠️ <b>3 movimientos requieren revisión</b> antes de generar el consolidado del periodo 2026-06.
+        </div>
+
+        <div class="card">
+          <div class="card-title">⚠️ Bandeja de observaciones — Junio 2026</div>
+          <table>
+            <thead>
+              <tr><th>RUT</th><th>Socio</th><th>Beneficio</th><th>Monto</th><th>Regla infringida</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              <tr style="background:#fffef5;">
+                <td>11.222.333-4</td><td>Carla Morales</td><td>Óptica</td>
+                <td>$110.000</td>
+                <td><span class="badge badge-yellow">Licencia médica</span></td>
+                <td><span class="badge badge-yellow">Pendiente</span></td>
+                <td style="display:flex;gap:6px;">
+                  <button class="btn btn-success btn-xs">✓ Aprobar</button>
+                  <button class="btn btn-danger btn-xs">✗ Rechazar</button>
+                </td>
+              </tr>
+              <tr style="background:#fffef5;">
+                <td>17.890.123-5</td><td>Pedro Soto</td><td>Gas</td>
+                <td>$30.000</td>
+                <td><span class="badge badge-orange">Socio suspendido</span></td>
+                <td><span class="badge badge-yellow">Pendiente</span></td>
+                <td style="display:flex;gap:6px;">
+                  <button class="btn btn-success btn-xs">✓ Aprobar</button>
+                  <button class="btn btn-danger btn-xs">✗ Rechazar</button>
+                </td>
+              </tr>
+              <tr style="background:#fffef5;">
+                <td>19.111.222-3</td><td>Luis Herrera</td><td>Telefonía</td>
+                <td>$45.000</td>
+                <td><span class="badge badge-blue">Posible duplicado</span></td>
+                <td><span class="badge badge-yellow">Pendiente</span></td>
+                <td style="display:flex;gap:6px;">
+                  <button class="btn btn-success btn-xs">✓ Aprobar</button>
+                  <button class="btn btn-danger btn-xs">✗ Rechazar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">✅ Movimientos rechazados este periodo <span>(10 registros)</span></div>
+          <table>
+            <thead>
+              <tr><th>RUT</th><th>Socio</th><th>Beneficio</th><th>Monto</th><th>Motivo</th><th>Resuelto por</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>14.567.890-2</td><td>Jorge Vargas</td><td>Gas</td><td>$30.000</td>
+                <td><span class="badge badge-red">Desvinculado</span></td>
+                <td>Sistema (automático)</td>
+              </tr>
+              <tr>
+                <td>13.999.000-1</td><td>Sandra Rojas</td><td>Copeuch</td><td>$75.000</td>
+                <td><span class="badge badge-red">RUT inválido</span></td>
+                <td>Sistema (automático)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <div style="font-size:13px;color:#888;align-self:center;">0 observaciones pendientes → puede generar consolidado</div>
+          <button class="btn btn-primary" onclick="show('consolidado')">Ir a Consolidado →</button>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 7: CONSOLIDADO ════════════════ -->
+      <div class="screen" id="s-consolidado">
+
+        <!-- Steps -->
+        <div class="steps">
+          <div class="step">
+            <div class="step-circle done">1</div>
+            <div class="step-label done">Movimientos</div>
+          </div>
+          <div class="step-line done"></div>
+          <div class="step">
+            <div class="step-circle done">2</div>
+            <div class="step-label done">Validaciones</div>
+          </div>
+          <div class="step-line done"></div>
+          <div class="step">
+            <div class="step-circle active">3</div>
+            <div class="step-label active">Consolidado</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step">
+            <div class="step-circle pending">4</div>
+            <div class="step-label pending">Exportación</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step">
+            <div class="step-circle pending">5</div>
+            <div class="step-label pending">Envío empresa</div>
+          </div>
+        </div>
+
+        <div class="status-bar">
+          📋 <b>Periodo 2026-06</b> · Estado: <span class="badge badge-yellow" style="margin:0 6px;">Borrador</span>
+          · 847 movimientos · Sin errores bloqueantes
+          <div style="flex:1;"></div>
+          <button class="btn btn-primary btn-sm">⚙️ Generar / Recalcular consolidado</button>
+        </div>
+
+        <!-- Vista pivot -->
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:14px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;gap:12px;">
+            <div style="font-size:13px;font-weight:700;">Vista consolidado — Socio × Beneficio</div>
+            <div style="flex:1;"></div>
+            <div class="search-box" style="max-width:220px;">
+              <span class="search-icon">🔍</span>
+              <input class="search-input" placeholder="Buscar socio...">
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="pivot-table">
+              <thead>
+                <tr>
+                  <th>RUT</th><th>Nombre</th>
+                  <th>Ayuda T.</th><th>Clínica</th><th>Confía</th><th>Copeuch</th>
+                  <th>D. Sindical</th><th>Gas</th><th>Happyland</th>
+                  <th>Mochilas</th><th>Óptica</th><th>Telefonía</th><th>Veterinaria</th>
+                  <th class="total-col">TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>12.345.678-9</td><td>Alejandro Fuentes</td>
+                  <td>0</td><td>0</td><td>0</td><td>85.000</td>
+                  <td>10.000</td><td>30.000</td><td>0</td>
+                  <td>0</td><td>0</td><td>0</td><td>0</td>
+                  <td class="total-col">$125.000</td>
+                </tr>
+                <tr>
+                  <td>16.123.456-7</td><td>Rosa Díaz</td>
+                  <td>0</td><td>0</td><td>50.000</td><td>0</td>
+                  <td>10.000</td><td>30.000</td><td>7.000</td>
+                  <td>0</td><td>0</td><td>45.000</td><td>35.000</td>
+                  <td class="total-col">$177.000</td>
+                </tr>
+                <tr>
+                  <td>18.456.789-3</td><td>Ana Gómez</td>
+                  <td>0</td><td>0</td><td>0</td><td>0</td>
+                  <td>10.000</td><td>30.000</td><td>0</td>
+                  <td>70.000</td><td>0</td><td>0</td><td>0</td>
+                  <td class="total-col">$110.000</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="2"><b>TOTAL COLUMNA</b></td>
+                  <td>0</td><td>0</td><td>50.000</td><td>85.000</td>
+                  <td>30.000</td><td>90.000</td><td>7.000</td>
+                  <td>70.000</td><td>0</td><td>45.000</td><td>35.000</td>
+                  <td class="total-col"><b>$412.000</b></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+          <button class="btn btn-warning">🔒 Cerrar periodo</button>
+          <button class="btn btn-primary" onclick="show('exportacion')">Exportar Excel →</button>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 8: EXPORTACION ════════════════ -->
+      <div class="screen" id="s-exportacion">
+
+        <div class="steps">
+          <div class="step"><div class="step-circle done">1</div><div class="step-label done">Movimientos</div></div>
+          <div class="step-line done"></div>
+          <div class="step"><div class="step-circle done">2</div><div class="step-label done">Validaciones</div></div>
+          <div class="step-line done"></div>
+          <div class="step"><div class="step-circle done">3</div><div class="step-label done">Consolidado</div></div>
+          <div class="step-line done"></div>
+          <div class="step"><div class="step-circle active">4</div><div class="step-label active">Exportación</div></div>
+          <div class="step-line"></div>
+          <div class="step"><div class="step-circle pending">5</div><div class="step-label pending">Envío empresa</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+          <div class="card">
+            <div class="card-title">📤 Generar exportación</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Periodo a exportar</label>
+                <select class="form-select"><option>2026-06 (actual)</option><option>2026-05</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Versión</label>
+                <input class="form-input" value="v1" readonly style="background:#f7f8fb;">
+                <span class="form-hint">Se incrementa automáticamente si existe versión anterior</span>
+              </div>
+              <div style="background:#f7f8fb;border-radius:7px;padding:12px;font-size:12px;color:#555;">
+                <div style="font-weight:700;margin-bottom:6px;">📄 Nombre de archivo generado:</div>
+                <code>CONSOLIDADO_SINDICATO01_202606_v1.xlsx</code>
+              </div>
+              <button class="btn btn-success" style="margin-top:4px;">⬇️ Generar y descargar Excel</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">👁️ Vista previa del archivo</div>
+            <div class="export-preview">
+              <div style="font-size:11px;color:#888;margin-bottom:6px;">Sindicato DHL · Periodo 2026-06 · 412 socios</div>
+              <div class="table-wrap">
+                <table style="font-size:10px;width:100%;">
+                  <thead>
+                    <tr>
+                      <th style="background:#1a1a2e;color:#fff;padding:5px 6px;">RUT</th>
+                      <th style="background:#1a1a2e;color:#fff;padding:5px 6px;">NOMBRE</th>
+                      <th style="background:#1a1a2e;color:#fff;padding:5px 6px;">GAS</th>
+                      <th style="background:#1a1a2e;color:#fff;padding:5px 6px;">TELEFONÍA</th>
+                      <th style="background:#1a1a2e;color:#fff;padding:5px 6px;">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:4px 6px;">12.345.678-9</td>
+                      <td style="padding:4px 6px;">A. Fuentes</td>
+                      <td style="padding:4px 6px;text-align:right;">30.000</td>
+                      <td style="padding:4px 6px;text-align:right;">-</td>
+                      <td style="padding:4px 6px;text-align:right;font-weight:700;">125.000</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 6px;">16.123.456-7</td>
+                      <td style="padding:4px 6px;">R. Díaz</td>
+                      <td style="padding:4px 6px;text-align:right;">30.000</td>
+                      <td style="padding:4px 6px;text-align:right;">45.000</td>
+                      <td style="padding:4px 6px;text-align:right;font-weight:700;">177.000</td>
+                    </tr>
+                    <tr style="background:#e8f0fe;font-weight:700;">
+                      <td colspan="2" style="padding:4px 6px;">TOTAL COLUMNA</td>
+                      <td style="padding:4px 6px;text-align:right;">9.360.000</td>
+                      <td style="padding:4px 6px;text-align:right;">6.248.000</td>
+                      <td style="padding:4px 6px;text-align:right;">38.400.000</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="font-size:10px;color:#888;margin-top:6px;">* Previsualización con primeras filas. El archivo completo tiene 412 socios y todas las columnas.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial exportaciones -->
+        <div class="card">
+          <div class="card-title">📜 Historial de exportaciones</div>
+          <table>
+            <thead>
+              <tr><th>Archivo</th><th>Periodo</th><th>Versión</th><th>Socios</th><th>Total CLP</th><th>Generado por</th><th>Fecha</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>📄 CONSOLIDADO_SINDICATO01_202605_v1.xlsx</td>
+                <td>2026-05</td><td>v1</td><td>408</td><td>$37.100.000</td>
+                <td>M. López</td><td>2026-05-24 09:15</td>
+                <td><button class="btn btn-outline btn-xs">⬇️ Volver a descargar</button></td>
+              </tr>
+              <tr>
+                <td>📄 CONSOLIDADO_SINDICATO01_202604_v2.xlsx</td>
+                <td>2026-04</td><td>v2</td><td>401</td><td>$36.400.000</td>
+                <td>M. López</td><td>2026-04-23 11:02</td>
+                <td><button class="btn btn-outline btn-xs">⬇️ Volver a descargar</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 9: USUARIOS Y ROLES ════════════════ -->
+      <div class="screen" id="s-usuarios">
+
+        <div class="toolbar">
+          <div style="flex:1;"></div>
+          <button class="btn btn-primary">+ Nuevo usuario</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔑 Usuarios del sindicato <span>(5 usuarios)</span></div>
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Último acceso</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar">ML</div> María López</div></td>
+                <td>m.lopez@sindicato.cl</td>
+                <td><span class="badge badge-blue">Tesorería</span></td>
+                <td>Hoy 09:12</td>
+                <td><span class="badge badge-green">Activo</span></td>
+                <td><button class="btn btn-outline btn-xs">✏️ Editar</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar">JR</div> Juan Rodríguez</div></td>
+                <td>j.rodriguez@sindicato.cl</td>
+                <td><span class="badge badge-orange">Dirigente</span></td>
+                <td>Ayer 15:30</td>
+                <td><span class="badge badge-green">Activo</span></td>
+                <td><button class="btn btn-outline btn-xs">✏️ Editar</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar">CP</div> Claudia Pérez</div></td>
+                <td>c.perez@sindicato.cl</td>
+                <td><span class="badge badge-gray">Administración</span></td>
+                <td>2026-06-10</td>
+                <td><span class="badge badge-green">Activo</span></td>
+                <td><button class="btn btn-outline btn-xs">✏️ Editar</button></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar">GV</div> Gonzalo Vera</div></td>
+                <td>g.vera@sindicato.cl</td>
+                <td><span class="badge badge-orange">Dirigente</span></td>
+                <td>2026-06-08</td>
+                <td><span class="badge badge-gray">Inactivo</span></td>
+                <td><button class="btn btn-outline btn-xs">✏️ Editar</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 Resumen de permisos por rol</div>
+          <table>
+            <thead>
+              <tr><th>Módulo / Acción</th><th>Dirigente</th><th>Tesorería</th><th>Administración</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Ver Dashboard</td><td>✅</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Gestionar socios</td><td>👁️</td><td>👁️</td><td>✅</td></tr>
+              <tr><td>Gestionar beneficios</td><td>👁️</td><td>👁️</td><td>✅</td></tr>
+              <tr><td>Registrar movimientos</td><td>❌</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Resolver validaciones</td><td>❌</td><td>✅</td><td>❌</td></tr>
+              <tr><td>Generar consolidado</td><td>❌</td><td>✅</td><td>❌</td></tr>
+              <tr><td>Exportar Excel</td><td>❌</td><td>✅</td><td>❌</td></tr>
+              <tr><td>Aprobar consolidado</td><td>✅</td><td>❌</td><td>❌</td></tr>
+              <tr><td>Gestionar usuarios</td><td>❌</td><td>❌</td><td>✅</td></tr>
+              <tr><td>Ver auditoría</td><td>✅</td><td>👁️</td><td>✅</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:11px;color:#888;margin-top:8px;">✅ Acceso total · 👁️ Solo lectura · ❌ Sin acceso</div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════ SCREEN 10: AUDITORIA ════════════════ -->
+      <div class="screen" id="s-auditoria">
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" placeholder="Buscar por usuario, entidad...">
+          </div>
+          <select class="form-select" style="width:140px;">
+            <option>Todas las entidades</option>
+            <option>Socio</option>
+            <option>Movimiento</option>
+            <option>Consolidado</option>
+            <option>Exportación</option>
+          </select>
+          <select class="form-select" style="width:150px;">
+            <option>Todos los usuarios</option>
+            <option>M. López</option>
+            <option>J. Rodríguez</option>
+          </select>
+          <input class="form-input" type="date" value="2026-06-01" style="width:150px;">
+          <input class="form-input" type="date" value="2026-06-12" style="width:150px;">
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>ID entidad</th><th>Resumen</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-12 09:45:32</td>
+                  <td><span class="avatar">ML</span> M. López</td>
+                  <td><span class="badge badge-blue">CREAR</span></td>
+                  <td>Movimiento</td><td style="font-size:11px;color:#888;">mov_00847</td>
+                  <td>Movimiento Gas · 12.345.678-9 · $30.000</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-12 09:30:14</td>
+                  <td><span class="avatar">ML</span> M. López</td>
+                  <td><span class="badge badge-yellow">EDITAR</span></td>
+                  <td>Socio</td><td style="font-size:11px;color:#888;">soc_00124</td>
+                  <td>Estado laboral: Activo → Licencia médica</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-11 18:22:05</td>
+                  <td><span class="avatar">ML</span> M. López</td>
+                  <td><span class="badge badge-green">EXPORTAR</span></td>
+                  <td>Consolidado</td><td style="font-size:11px;color:#888;">con_202605</td>
+                  <td>CONSOLIDADO_SINDICATO01_202605_v1.xlsx descargado</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-11 17:55:00</td>
+                  <td><span class="avatar">ML</span> M. López</td>
+                  <td><span class="badge badge-orange">CERRAR</span></td>
+                  <td>Consolidado</td><td style="font-size:11px;color:#888;">con_202605</td>
+                  <td>Periodo 2026-05 cerrado</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-10 11:10:22</td>
+                  <td><span class="avatar">CP</span> C. Pérez</td>
+                  <td><span class="badge badge-blue">CREAR</span></td>
+                  <td>Socio</td><td style="font-size:11px;color:#888;">soc_00412</td>
+                  <td>Nuevo socio · 18.456.789-3 · Ana Gómez</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap;">2026-06-10 10:45:00</td>
+                  <td><span class="avatar">CP</span> C. Pérez</td>
+                  <td><span class="badge badge-red">RECHAZAR</span></td>
+                  <td>Movimiento</td><td style="font-size:11px;color:#888;">mov_00821</td>
+                  <td>Validación manual: Socio desvinculado · J. Vargas</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:10px 20px;border-top:1px solid #f0f2f5;">
+            <div class="pagination">
+              <div class="page-btn active">1</div>
+              <div class="page-btn">2</div>
+              <div class="page-btn">3</div>
+              <div class="page-btn">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div class="wf-note">Wireframe MVP · Plataforma Sindical · Junio 2026</div>
+
+<script>
+  const titles = {
+    dashboard: 'Dashboard',
+    socios: 'Socios',
+    'socio-form': 'Socios — Editar',
+    beneficios: 'Tipos de Beneficio',
+    movimientos: 'Movimientos',
+    'movimiento-form': 'Movimientos — Registrar',
+    validaciones: 'Validaciones',
+    consolidado: 'Consolidado Mensual',
+    exportacion: 'Exportación Excel',
+    usuarios: 'Usuarios y Roles',
+    auditoria: 'Auditoría',
+  };
+
+  function show(screen) {
+    // Ocultar todas las pantallas
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    // Mostrar la pantalla objetivo
+    const el = document.getElementById('s-' + screen);
+    if (el) el.classList.add('active');
+
+    // Actualizar título
+    document.getElementById('page-title').textContent = titles[screen] || screen;
+
+    // Actualizar nav activo
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navMap = {
+      dashboard: 0, socios: 1, 'socio-form': 1, beneficios: 2,
+      movimientos: 3, 'movimiento-form': 3, validaciones: 4,
+      consolidado: 5, exportacion: 6, usuarios: 7, auditoria: 8
+    };
+    const navItems = document.querySelectorAll('.nav-item');
+    const idx = navMap[screen];
+    if (idx !== undefined && navItems[idx]) navItems[idx].classList.add('active');
+
+    // Scroll al inicio del contenido
+    document.querySelector('.content').scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
