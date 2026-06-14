@@ -721,6 +721,15 @@ class MovimientoSindicato(BaseModel):
         (ESTADO_RECHAZADO, 'Rechazado'),
     ]
 
+    FUENTE_GAS = 'GAS'
+    FUENTE_TELEFONIA = 'TELEFONIA'
+    FUENTE_COPEUCH = 'COPEUCH'
+    FUENTE_CHOICES = [
+        (FUENTE_GAS, 'Gas'),
+        (FUENTE_TELEFONIA, 'Telefonia'),
+        (FUENTE_COPEUCH, 'Copeuch'),
+    ]
+
     empresa = models.ForeignKey(
         'Empresa',
         on_delete=models.CASCADE,
@@ -753,6 +762,17 @@ class MovimientoSindicato(BaseModel):
         blank=True,
         default='',
         verbose_name='Referencia externa',
+    )
+    fuente = models.CharField(
+        max_length=20,
+        choices=FUENTE_CHOICES,
+        default=FUENTE_GAS,
+        verbose_name='Fuente',
+    )
+    metadata_fuente = models.JSONField(
+        blank=True,
+        default=dict,
+        verbose_name='Metadata fuente',
     )
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

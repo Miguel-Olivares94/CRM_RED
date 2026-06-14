@@ -12,13 +12,7 @@ FUENTE_GENERICA = "GENERICA"
 def normalizar_header(text: str | None) -> str:
     value = (str(text or "").strip().lower())
     value = (
-        value.replace("a", "a")
-        .replace("e", "e")
-        .replace("i", "i")
-        .replace("o", "o")
-        .replace("u", "u")
-        .replace("n", "n")
-        .replace("á", "a")
+        value.replace("á", "a")
         .replace("é", "e")
         .replace("í", "i")
         .replace("ó", "o")
@@ -39,11 +33,9 @@ def _resolver_valor(row: dict, aliases: list[str]) -> str:
 def detectar_fuente(headers: set[str]) -> str:
     headers_norm = {normalizar_header(h) for h in headers}
 
-    if {
-        "rut",
-        "nombre_apellido",
-        "monto",
-    }.issubset(headers_norm):
+    if "rut" in headers_norm and "monto" in headers_norm and (
+        "nombre_apellido" in headers_norm or "nombre" in headers_norm
+    ):
         return FUENTE_GAS
 
     if "rut" in headers_norm and "cargo_fijo" in headers_norm and (
@@ -69,6 +61,7 @@ class FilaFuente:
     observacion: str
     referencia_externa: str
     referencia_informada: bool
+    source_columns: dict
 
 
 def _build_auto_ref(source: str, source_tag: str, fila: int) -> str:
@@ -98,6 +91,13 @@ def _mapear_fila(row: dict, source: str, source_tag: str) -> FilaFuente:
             extras.append(f"Vale gas: {vale}")
         if extras:
             observacion = f"{observacion} | {' | '.join(extras)}".strip(" |")
+        source_columns = {
+            "rut": rut_raw,
+            "nombre_apellido": nombre,
+            "site": site,
+            "vale_de_gas": vale,
+            "monto": monto_raw,
+        }
     elif source == FUENTE_TELEFONIA:
         rut_raw = _resolver_valor(row, ["rut"])
         nombre = _resolver_valor(row, ["razon_social", "nombre", "socio", "nombre_socio"])
@@ -116,6 +116,14 @@ def _mapear_fila(row: dict, source: str, source_tag: str) -> FilaFuente:
                 extras.append(f"{etiqueta}: {valor}")
         if extras:
             observacion = f"{observacion} | {' | '.join(extras)}".strip(" |")
+        source_columns = {
+            "rut": rut_raw,
+            "razon_social": nombre,
+            "cuenta": _resolver_valor(row, ["cuenta"]),
+            "pcs": _resolver_valor(row, ["pcs"]),
+            "cargo_fijo": monto_raw,
+            "fecha_entrega": _resolver_valor(row, ["fecha_de_entrega", "fecha_entrega"]),
+        }
     elif source == FUENTE_COPEUCH:
         rut_raw = _resolver_valor(row, ["rut"])
         nombre = _resolver_valor(row, ["nombre", "razon_social", "socio", "nombre_socio"])
@@ -134,12 +142,25 @@ def _mapear_fila(row: dict, source: str, source_tag: str) -> FilaFuente:
                 extras.append(f"{etiqueta}: {valor}")
         if extras:
             observacion = f"{observacion} | {' | '.join(extras)}".strip(" |")
+        source_columns = {
+            "rut": rut_raw,
+            "nombre": nombre,
+            "fecha_ingreso_socio": _resolver_valor(row, ["fec_ing_socio", "fecha_ingreso_socio"]),
+            "acciones": _resolver_valor(row, ["acciones"]),
+            "prestamos": _resolver_valor(row, ["prestamos"]),
+            "total_descuentos": monto_raw,
+        }
     else:
         rut_raw = _resolver_valor(row, ["rut"])
         nombre = _resolver_valor(row, ["nombre", "socio", "nombre_socio"])
         monto_raw = _resolver_valor(row, ["monto", "valor"])
         observacion = _resolver_valor(row, ["observacion", "observaciones"])
         referencia = _resolver_valor(row, ["referencia_externa", "referencia", "folio"])
+        source_columns = {
+            "rut": rut_raw,
+            "nombre": nombre,
+            "monto": monto_raw,
+        }
 
     referencia_informada = bool(referencia)
     if not referencia:
@@ -154,6 +175,7 @@ def _mapear_fila(row: dict, source: str, source_tag: str) -> FilaFuente:
         observacion=observacion,
         referencia_externa=referencia,
         referencia_informada=referencia_informada,
+        source_columns=source_columns,
     )
 
 

@@ -2555,6 +2555,8 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                     'observacion': observacion,
                     'referencia_externa': referencia,
                     'referencia_informada': referencia_informada,
+                    'source': row.source,
+                    'source_columns': row.source_columns,
                 }
             )
             preview.append(
@@ -2570,7 +2572,7 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
 
         return preview, valid_rows
 
-    def _ejecutar_importacion(self, empresa, beneficio, periodo, rows):
+    def _ejecutar_importacion(self, empresa, beneficio, periodo, rows, nombre_archivo=''):
         creados = 0
         rechazados = []
 
@@ -2610,6 +2612,18 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                 estado=MovimientoSindicato.ESTADO_PENDIENTE,
                 observacion=row.get('observacion') or '',
                 referencia_externa=ref,
+                fuente=row.get('source') if row.get('source') in {
+                    MovimientoSindicato.FUENTE_GAS,
+                    MovimientoSindicato.FUENTE_TELEFONIA,
+                    MovimientoSindicato.FUENTE_COPEUCH,
+                } else MovimientoSindicato.FUENTE_GAS,
+                metadata_fuente={
+                    'file_name': nombre_archivo,
+                    'source_row': row.get('fila'),
+                    'source_columns': row.get('source_columns') or {},
+                    'imported_at': datetime.now().isoformat(),
+                    'imported_by': self.request.user.username,
+                },
                 creado_por=self.request.user,
             )
             creados += 1
@@ -2682,13 +2696,19 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                     self._build_context(empresa, error='El período está cerrado o es inválido.'),
                 )
 
-            creados, rechazos_extra = self._ejecutar_importacion(empresa, beneficio, periodo, rows)
+            nombre_archivo = (meta.get('nombre_archivo') or '').strip()
+            creados, rechazos_extra = self._ejecutar_importacion(
+                empresa,
+                beneficio,
+                periodo,
+                rows,
+                nombre_archivo=nombre_archivo,
+            )
             preview = json.loads(meta.get('preview') or '[]')
             rechazadas_preview = [r for r in preview if r.get('estado') == 'RECHAZADA']
             rechazadas = len(rechazadas_preview) + len(rechazos_extra)
 
             total_filas = int(meta.get('total', 0))
-            nombre_archivo = (meta.get('nombre_archivo') or '').strip()
             AuditoriaSindicato.objects.create(
                 empresa=empresa,
                 usuario=request.user,

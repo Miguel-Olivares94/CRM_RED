@@ -395,6 +395,27 @@ class SindicatoImportViewTests(TestCase):
         self.assertEqual(audit.empresa, self.empresa_a)
         self.assertNotEqual(audit.empresa, self.empresa_b)
 
+    def test_importacion_persiste_fuente_y_metadata(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto,Referencia externa\n12.345.678-5,Socio A,10000,REF-META-1\n'
+        file_obj = self._csv_file(content, name='fuente_gas.csv')
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+
+        mov = MovimientoSindicato.objects.get(referencia_externa='REF-META-1')
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_GAS)
+        self.assertEqual(mov.metadata_fuente.get('file_name'), 'fuente_gas.csv')
+        self.assertEqual(mov.metadata_fuente.get('source_row'), 2)
+        self.assertEqual(mov.metadata_fuente.get('imported_by'), self.tesoreria_a.username)
+        self.assertEqual(mov.metadata_fuente.get('source_columns', {}).get('monto'), '10000')
+
 
 class SindicatoConsolidadoViewsTests(TestCase):
     @classmethod

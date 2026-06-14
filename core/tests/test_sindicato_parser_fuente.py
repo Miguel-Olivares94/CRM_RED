@@ -46,6 +46,7 @@ class SindicatoParserFuenteTests(SimpleTestCase):
         self.assertIn("Site: Aramark", result[0].observacion)
         self.assertIn("Vale gas: 15 KILOS", result[0].observacion)
         self.assertEqual(result[0].referencia_externa, "GAS-abc123-2")
+        self.assertEqual(result[0].source_columns.get("vale_de_gas"), "15 KILOS")
 
     def test_mapea_telefonia_con_cargo_fijo_y_observaciones(self):
         filas = [
