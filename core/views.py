@@ -46,6 +46,7 @@ from .services.sindicato_consolidado import (
     recalcular_consolidado_abierto,
 )
 from .services.sindicato_exportacion import ConsolidadoExportacionError, exportar_consolidado_excel
+from .services.sindicato_fuentes import parsear_filas_por_fuente
 
 
 def _build_supervisor_ejecutivos_json():
@@ -2431,44 +2432,19 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
         ).exists()
 
     def _validar_y_previsualizar(self, empresa, beneficio, periodo, filas, source_tag):
-        aliases = {
-            'rut': ['rut'],
-            'nombre': ['nombre', 'socio', 'nombre_socio'],
-            'monto': ['monto', 'valor'],
-            'observacion': ['observacion', 'observaciones'],
-            'referencia_externa': ['referencia_externa', 'referencia', 'folio'],
-            'site': ['site'],
-            'cantidad': ['cantidad'],
-            'tipo_vale': ['tipo_de_vale', 'tipo_vale'],
-            'numero_linea': ['numero_linea', 'numero_de_linea'],
-            'fecha_entrega': ['fecha_entrega'],
-        }
+        _fuente, filas_parseadas = parsear_filas_por_fuente(filas, source_tag)
         preview = []
         valid_rows = []
         refs_seen = set()
 
-        for row in filas:
-            fila_num = row.get('_fila', '?')
-            rut_raw = self._resolver_valor(row, aliases['rut'])
-            nombre = self._resolver_valor(row, aliases['nombre'])
-            monto_raw = self._resolver_valor(row, aliases['monto'])
-            observacion = self._resolver_valor(row, aliases['observacion'])
-            referencia = self._resolver_valor(row, aliases['referencia_externa'])
-
-            extras = []
-            for field, title in (
-                ('site', 'Site'),
-                ('cantidad', 'Cantidad'),
-                ('tipo_vale', 'Tipo vale'),
-                ('numero_linea', 'Numero linea'),
-                ('fecha_entrega', 'Fecha entrega'),
-            ):
-                value = self._resolver_valor(row, aliases[field])
-                if value:
-                    extras.append(f'{title}: {value}')
-
-            if extras:
-                observacion = f"{observacion} | {' | '.join(extras)}".strip(' |')
+        for row in filas_parseadas:
+            fila_num = row.fila
+            rut_raw = row.rut_raw
+            nombre = row.nombre
+            monto_raw = row.monto_raw
+            observacion = row.observacion
+            referencia = row.referencia_externa
+            referencia_informada = row.referencia_informada
 
             rut = _normalizar_rut_import(rut_raw)
             if not rut or not _validar_rut_chileno_import(rut):
@@ -2531,7 +2507,6 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
             else:
                 estado_socio = 'SOCIO_EXISTENTE'
 
-            referencia_informada = bool(referencia)
             if not referencia:
                 referencia = f"AUTO-{source_tag}-{fila_num}"
 
