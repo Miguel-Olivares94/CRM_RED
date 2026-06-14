@@ -526,3 +526,56 @@ class SindicatoConsolidadoViewsTests(TestCase):
         resp = self.client.get(reverse('core:sindicato_consolidado_historial'))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(list(resp.context['consolidados']), [])
+
+    def test_dirigente_recibe_403_en_exportacion(self):
+        cons = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo='2026-12',
+            estado=ConsolidadoMensualSindicato.ESTADO_CERRADO,
+            total_socios=0,
+            total_monto=0,
+        )
+        self.client.force_login(self.dirigente_a)
+        resp = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons.pk}))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_no_exporta_consolidado_otro_tenant(self):
+        cons_b = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_b,
+            periodo='2026-12',
+            estado=ConsolidadoMensualSindicato.ESTADO_CERRADO,
+            total_socios=0,
+            total_monto=0,
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons_b.pk}))
+        self.assertEqual(resp.status_code, 302)
+
+    def test_exporta_excel_consolidado_cerrado_desde_endpoint(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-12',
+            monto=8000,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='EXP-1',
+        )
+        self.client.force_login(self.admin_a)
+        self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': '2026-12'})
+        self.client.post(reverse('core:sindicato_consolidado_cerrar'), data={'periodo': '2026-12'})
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-12')
+
+        resp = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            resp['Content-Type'],
+        )
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='EXPORTAR_CONSOLIDADO',
+                periodo='2026-12',
+            ).exists()
+        )

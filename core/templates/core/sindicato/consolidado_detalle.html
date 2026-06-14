@@ -24,6 +24,10 @@
 </form>
 {% endif %}
 
+{% if puede_editar_consolidado and consolidado.estado != 'ABIERTO' %}
+<a href="{% url 'core:sindicato_consolidado_exportar' consolidado.id %}">Exportar Excel</a>
+{% endif %}
+
 <table border="1" cellpadding="6" cellspacing="0" style="margin-top:12px;">
   <thead>
     <tr>

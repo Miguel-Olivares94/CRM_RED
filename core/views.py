@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.views import View
 from django.views.generic import CreateView, ListView, TemplateView, DetailView, UpdateView, DeleteView
-from django.http import Http404, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
 from django.utils.translation import activate
 from datetime import datetime, timedelta
 import json
@@ -45,6 +45,7 @@ from .services.sindicato_consolidado import (
     generar_o_recalcular_consolidado,
     recalcular_consolidado_abierto,
 )
+from .services.sindicato_exportacion import ConsolidadoExportacionError, exportar_consolidado_excel
 
 
 def _build_supervisor_ejecutivos_json():
@@ -2983,6 +2984,33 @@ class ConsolidadoSindicatoCerrarPeriodoView(SindicatoTenantMixin, SindicatoRoleP
         except (ValueError, ConsolidadoNoExisteError, ConsolidadoBloqueadoError) as exc:
             messages.error(request, str(exc))
         return redirect('core:sindicato_consolidado_historial')
+
+
+class ConsolidadoSindicatoExportarView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'consolidado_editar'
+
+    def get(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        consolidado_id = kwargs.get('pk')
+        if empresa is None:
+            return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
+
+        try:
+            result = exportar_consolidado_excel(
+                empresa=empresa,
+                consolidado_id=consolidado_id,
+                usuario=request.user,
+            )
+        except ConsolidadoExportacionError as exc:
+            messages.error(request, str(exc))
+            return redirect('core:sindicato_consolidado_historial')
+
+        response = HttpResponse(
+            result.content,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{result.filename}"'
+        return response
 
 
 # ==================== AUTENTICACIÓN ====================

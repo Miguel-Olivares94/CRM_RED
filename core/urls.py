@@ -39,6 +39,7 @@ from .views import (
     ConsolidadoSindicatoGenerarView,
     ConsolidadoSindicatoRecalcularView,
     ConsolidadoSindicatoCerrarPeriodoView,
+    ConsolidadoSindicatoExportarView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -131,6 +132,7 @@ urlpatterns = [
     path('sindicato/consolidados/generar/', ConsolidadoSindicatoGenerarView.as_view(), name='sindicato_consolidado_generar'),
     path('sindicato/consolidados/recalcular/', ConsolidadoSindicatoRecalcularView.as_view(), name='sindicato_consolidado_recalcular'),
     path('sindicato/consolidados/cerrar/', ConsolidadoSindicatoCerrarPeriodoView.as_view(), name='sindicato_consolidado_cerrar'),
+    path('sindicato/consolidados/<int:pk>/exportar/', ConsolidadoSindicatoExportarView.as_view(), name='sindicato_consolidado_exportar'),
 
     # ── Asistente / Copiloto de IA ────────────────────────────────────
     path(
