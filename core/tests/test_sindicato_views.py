@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Empresa, MovimientoSindicato, SocioSindicato, TipoBeneficioSindicato, UserProfile
+from core.models import AuditoriaSindicato, Empresa, MovimientoSindicato, SocioSindicato, TipoBeneficioSindicato, UserProfile
 
 
 User = get_user_model()
@@ -218,6 +218,7 @@ class SindicatoImportViewTests(TestCase):
         self.client.force_login(self.dirigente_a)
         resp = self.client.get(reverse('core:sindicato_movimiento_import'))
         self.assertEqual(resp.status_code, 403)
+        self.assertEqual(AuditoriaSindicato.objects.count(), 0)
 
     def test_archivo_valido_crea_movimientos(self):
         self.client.force_login(self.tesoreria_a)
@@ -341,3 +342,43 @@ class SindicatoImportViewTests(TestCase):
         self.assertEqual(mov.empresa, self.empresa_a)
         self.assertEqual(mov.socio.empresa, self.empresa_a)
         self.assertEqual(SocioSindicato.objects.filter(empresa=self.empresa_b, rut='11111111-1').count(), 1)
+
+    def test_confirmar_importacion_crea_auditoria(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto,Referencia externa\n12.345.678-5,Socio A,10000,REF-AUD-1\n'
+        file_obj = self._csv_file(content, name='import_auditoria.csv')
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+
+        audit = AuditoriaSindicato.objects.latest('created_at')
+        self.assertEqual(audit.accion, 'IMPORTAR_MOVIMIENTOS')
+        self.assertEqual(audit.entidad, 'MovimientoSindicato')
+        self.assertEqual(audit.periodo, '2026-06')
+        self.assertEqual(audit.empresa, self.empresa_a)
+        self.assertEqual(audit.usuario, self.tesoreria_a)
+        self.assertEqual(audit.payload.get('total_filas_leidas'), 1)
+        self.assertEqual(audit.payload.get('total_importadas'), 1)
+        self.assertEqual(audit.payload.get('total_rechazadas'), 0)
+        self.assertEqual(audit.payload.get('nombre_archivo'), 'import_auditoria.csv')
+
+    def test_auditoria_queda_asociada_a_empresa_correcta(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto,Referencia externa\n11.111.111-1,Socio Tenant A,9000,REF-AUD-2\n'
+        file_obj = self._csv_file(content, name='import_tenant.csv')
+
+        self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-07', 'archivo': file_obj},
+        )
+        self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+
+        audit = AuditoriaSindicato.objects.latest('created_at')
+        self.assertEqual(audit.empresa, self.empresa_a)
+        self.assertNotEqual(audit.empresa, self.empresa_b)

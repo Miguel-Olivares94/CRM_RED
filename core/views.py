@@ -28,6 +28,7 @@ from .models import (
     MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
     Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
     ConsolidadoMensualSindicato,
+    AuditoriaSindicato,
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -2697,6 +2698,32 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
             preview = json.loads(meta.get('preview') or '[]')
             rechazadas_preview = [r for r in preview if r.get('estado') == 'RECHAZADA']
             rechazadas = len(rechazadas_preview) + len(rechazos_extra)
+
+            total_filas = int(meta.get('total', 0))
+            nombre_archivo = (meta.get('nombre_archivo') or '').strip()
+            AuditoriaSindicato.objects.create(
+                empresa=empresa,
+                usuario=request.user,
+                accion='IMPORTAR_MOVIMIENTOS',
+                entidad='MovimientoSindicato',
+                entidad_id=f'{beneficio.id}:{periodo}'[:40],
+                periodo=periodo,
+                resumen=(
+                    f'Importación movimientos {periodo} | beneficio {beneficio.codigo} '
+                    f'| leídas={total_filas} | importadas={creados} | rechazadas={rechazadas}'
+                )[:255],
+                payload={
+                    'total_filas_leidas': total_filas,
+                    'total_importadas': creados,
+                    'total_rechazadas': rechazadas,
+                    'tipo_beneficio_id': beneficio.id,
+                    'tipo_beneficio_codigo': beneficio.codigo,
+                    'tipo_beneficio_nombre': beneficio.nombre,
+                    'periodo': periodo,
+                    'nombre_archivo': nombre_archivo,
+                },
+            )
+
             request.session.pop(self.session_rows_key, None)
             request.session.pop(self.session_meta_key, None)
 
@@ -2772,6 +2799,7 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                 'total': len(preview),
                 'validas': len(valid_rows),
                 'preview': json.dumps(preview),
+                'nombre_archivo': archivo.name,
             }
         )
 
