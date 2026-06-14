@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
@@ -162,3 +163,181 @@ class SindicatoViewsTests(TestCase):
         self.client.force_login(self.tesoreria_a)
         resp = self.client.get(reverse('core:sindicato_movimiento_update', kwargs={'pk': mov_b.pk}))
         self.assertEqual(resp.status_code, 404)
+
+
+class SindicatoImportViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa_a = Empresa.objects.create(nombre='Empresa A', tipo='CLIENTE')
+        cls.empresa_b = Empresa.objects.create(nombre='Empresa B', tipo='CLIENTE')
+
+        cls.grp_admin = Group.objects.create(name='Administracion')
+        cls.grp_tesoreria = Group.objects.create(name='Tesoreria')
+        cls.grp_dirigente = Group.objects.create(name='Dirigente')
+
+        cls.admin_a = User.objects.create_user(username='admin_a', email='admin_a@test.cl', password='x')
+        cls.admin_a.groups.add(cls.grp_admin)
+        UserProfile.objects.create(user=cls.admin_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.tesoreria_a = User.objects.create_user(username='tes_a', email='tes_a@test.cl', password='x')
+        cls.tesoreria_a.groups.add(cls.grp_tesoreria)
+        UserProfile.objects.create(user=cls.tesoreria_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.dirigente_a = User.objects.create_user(username='dir_a', email='dir_a@test.cl', password='x')
+        cls.dirigente_a.groups.add(cls.grp_dirigente)
+        UserProfile.objects.create(user=cls.dirigente_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.socio_a = SocioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            rut='12345678-5',
+            nombre='Socio A',
+        )
+        cls.socio_b = SocioSindicato.objects.create(
+            empresa=cls.empresa_b,
+            rut='11111111-1',
+            nombre='Socio B',
+        )
+
+        cls.benef_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_inactivo_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='COP',
+            nombre='Copeuch',
+            estado=TipoBeneficioSindicato.ESTADO_INACTIVO,
+        )
+
+    def _csv_file(self, content, name='movimientos.csv'):
+        return SimpleUploadedFile(name, content.encode('utf-8'), content_type='text/csv')
+
+    def test_usuario_sin_permiso_recibe_403(self):
+        self.client.force_login(self.dirigente_a)
+        resp = self.client.get(reverse('core:sindicato_movimiento_import'))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_archivo_valido_crea_movimientos(self):
+        self.client.force_login(self.tesoreria_a)
+        content = (
+            'RUT,Nombre,Monto,Observacion,Referencia externa,Site\n'
+            '12.345.678-5,Socio A,10000,ok,REF-OK-1,Site A\n'
+            '11.111.111-1,Socio Nuevo Tenant A,12000,alta,REF-OK-2,Site B\n'
+        )
+        file_obj = self._csv_file(content)
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={
+                'tipo_beneficio': self.benef_a.id,
+                'periodo': '2026-06',
+                'archivo': file_obj,
+            },
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Válidas: 2')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 2')
+
+        self.assertEqual(
+            MovimientoSindicato.objects.filter(empresa=self.empresa_a, periodo='2026-06').count(),
+            2,
+        )
+        socio_nuevo = SocioSindicato.objects.get(empresa=self.empresa_a, rut='11111111-1')
+        self.assertEqual(socio_nuevo.nombre, 'Socio Nuevo Tenant A')
+        self.assertEqual(SocioSindicato.objects.filter(empresa=self.empresa_b, rut='11111111-1').count(), 1)
+
+    def test_rut_invalido_rechaza_fila(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto\n12.345.678-9,Socio Malo,10000\n'
+        file_obj = self._csv_file(content)
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Rechazadas: 1')
+        self.assertContains(preview, 'RUT inválido o vacío.')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 0')
+
+    def test_monto_cero_rechaza_fila(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto\n12.345.678-5,Socio A,0\n'
+        file_obj = self._csv_file(content)
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Monto debe ser mayor a cero.')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 0')
+
+    def test_beneficio_inactivo_rechaza_importacion(self):
+        self.client.force_login(self.admin_a)
+        content = 'RUT,Nombre,Monto\n12.345.678-5,Socio A,10000\n'
+        file_obj = self._csv_file(content)
+
+        resp = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={
+                'tipo_beneficio': self.benef_inactivo_a.id,
+                'periodo': '2026-06',
+                'archivo': file_obj,
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'está inactivo')
+        self.assertEqual(MovimientoSindicato.objects.filter(empresa=self.empresa_a).count(), 0)
+
+    def test_duplicado_con_referencia_externa_rechaza(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-06',
+            monto=10000,
+            referencia_externa='REF-DUP',
+        )
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto,Referencia externa\n12.345.678-5,Socio A,10000,REF-DUP\n'
+        file_obj = self._csv_file(content)
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Referencia externa duplicada')
+        self.assertContains(preview, 'Rechazadas: 1')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 0')
+
+    def test_tenant_isolation_importa_solo_empresa_usuario(self):
+        self.client.force_login(self.tesoreria_a)
+        content = 'RUT,Nombre,Monto,Referencia externa\n11.111.111-1,Socio Tenant A,9000,REF-TENANT-1\n'
+        file_obj = self._csv_file(content)
+
+        self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_a.id, 'periodo': '2026-07', 'archivo': file_obj},
+        )
+        self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+
+        mov = MovimientoSindicato.objects.get(referencia_externa='REF-TENANT-1')
+        self.assertEqual(mov.empresa, self.empresa_a)
+        self.assertEqual(mov.socio.empresa, self.empresa_a)
+        self.assertEqual(SocioSindicato.objects.filter(empresa=self.empresa_b, rut='11111111-1').count(), 1)

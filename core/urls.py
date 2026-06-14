@@ -32,6 +32,7 @@ from .views import (
     MovimientoSindicatoListView,
     MovimientoSindicatoCreateView,
     MovimientoSindicatoUpdateView,
+    MovimientoSindicatoImportView,
     ConsultaRutSindicatoView,
 )
 from .views import api_comunas
@@ -116,6 +117,7 @@ urlpatterns = [
     path('sindicato/beneficios/nuevo/', TipoBeneficioSindicatoCreateView.as_view(), name='sindicato_beneficio_create'),
     path('sindicato/beneficios/<int:pk>/editar/', TipoBeneficioSindicatoUpdateView.as_view(), name='sindicato_beneficio_update'),
     path('sindicato/movimientos/', MovimientoSindicatoListView.as_view(), name='sindicato_movimiento_list'),
+    path('sindicato/importar/', MovimientoSindicatoImportView.as_view(), name='sindicato_movimiento_import'),
     path('sindicato/movimientos/nuevo/', MovimientoSindicatoCreateView.as_view(), name='sindicato_movimiento_create'),
     path('sindicato/movimientos/<int:pk>/editar/', MovimientoSindicatoUpdateView.as_view(), name='sindicato_movimiento_update'),
     path('sindicato/consulta-rut/', ConsultaRutSindicatoView.as_view(), name='sindicato_consulta_rut'),

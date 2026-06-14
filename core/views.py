@@ -12,6 +12,10 @@ from django.utils.translation import activate
 from datetime import datetime, timedelta
 import json
 import io
+import csv
+import hashlib
+from decimal import Decimal, InvalidOperation
+import re
 
 from .forms import (
     ClienteForm, ContactoForm, OportunidadForm, LlamadaForm,
@@ -23,6 +27,7 @@ from .models import (
     Cliente, Contacto, Oportunidad, Llamada,
     MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
     Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
+    ConsolidadoMensualSindicato,
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -2052,6 +2057,37 @@ def _rut_normalizado_simple(rut):
     return f"{limpio[:-1]}-{limpio[-1]}"
 
 
+PERIODO_REGEX_SIND = re.compile(r'^\d{4}-(0[1-9]|1[0-2])$')
+
+
+def _normalizar_rut_import(rut):
+    if not rut:
+        return ''
+    limpio = re.sub(r'[^0-9kK]', '', str(rut)).upper()
+    if len(limpio) < 2:
+        return limpio
+    return f"{limpio[:-1]}-{limpio[-1]}"
+
+
+def _validar_rut_chileno_import(rut_normalizado):
+    if not rut_normalizado or '-' not in rut_normalizado:
+        return False
+    cuerpo, dv = rut_normalizado.split('-', 1)
+    if not cuerpo.isdigit() or not dv:
+        return False
+
+    dv = dv.upper()
+    suma = 0
+    multiplo = 2
+    for digito in reversed(cuerpo):
+        suma += int(digito) * multiplo
+        multiplo = multiplo + 1 if multiplo < 7 else 2
+
+    resto = 11 - (suma % 11)
+    dv_esperado = '0' if resto == 11 else 'K' if resto == 10 else str(resto)
+    return dv == dv_esperado
+
+
 class SindicatoTenantMixin(LoginRequiredMixin):
     login_url = 'core:login'
 
@@ -2096,6 +2132,8 @@ class SindicatoRolePermissionMixin:
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
         if permiso == 'movimientos_editar':
             return _es_tesoreria_sindicato(user)
+        if permiso == 'movimientos_importar':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
         if permiso == 'consulta_rut':
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
         return False
@@ -2226,6 +2264,11 @@ class MovimientoSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionM
             qs = qs.filter(periodo=periodo)
         return qs.order_by('-periodo', '-created_at')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['puede_importar'] = self._check_permiso('movimientos_importar')
+        return context
+
 
 class MovimientoSindicatoCreateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, CreateView):
     model = MovimientoSindicato
@@ -2280,6 +2323,472 @@ class MovimientoSindicatoUpdateView(SindicatoTenantMixin, SindicatoRolePermissio
             return self.form_invalid(form)
         form.instance.empresa = empresa
         return super().form_valid(form)
+
+
+class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissionMixin, TemplateView):
+    template_name = 'core/sindicato/movimiento_import.html'
+    permiso_ver = 'movimientos_importar'
+    permiso_editar = 'movimientos_importar'
+    session_rows_key = 'sindicato_import_rows'
+    session_meta_key = 'sindicato_import_meta'
+
+    def _normalizar_header(self, text):
+        value = (str(text or '').strip().lower())
+        value = (
+            value.replace('á', 'a')
+            .replace('é', 'e')
+            .replace('í', 'i')
+            .replace('ó', 'o')
+            .replace('ú', 'u')
+            .replace('ñ', 'n')
+        )
+        return value.replace(' ', '_').replace('-', '_')
+
+    def _resolver_valor(self, row, aliases):
+        for key in aliases:
+            val = row.get(key)
+            if val is not None and str(val).strip() != '':
+                return str(val).strip()
+        return ''
+
+    def _leer_archivo(self, archivo):
+        name = (archivo.name or '').lower()
+        rows = []
+        errors = []
+
+        try:
+            if name.endswith('.xlsx') or name.endswith('.xls'):
+                import openpyxl
+
+                content = archivo.read()
+                wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+                ws = wb.active
+                headers = [self._normalizar_header(c.value) for c in next(ws.iter_rows(min_row=1, max_row=1))]
+                for idx, line in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                    if all(v is None or str(v).strip() == '' for v in line):
+                        continue
+                    item = {'_fila': idx}
+                    for col, raw in enumerate(line):
+                        if col >= len(headers):
+                            continue
+                        key = headers[col]
+                        if key:
+                            item[key] = '' if raw is None else str(raw).strip()
+                    rows.append(item)
+            elif name.endswith('.csv'):
+                content = archivo.read().decode('utf-8-sig')
+                reader = csv.DictReader(io.StringIO(content))
+                for idx, line in enumerate(reader, start=2):
+                    item = {'_fila': idx}
+                    for k, v in (line or {}).items():
+                        nk = self._normalizar_header(k)
+                        if nk:
+                            item[nk] = '' if v is None else str(v).strip()
+                    if any(str(v).strip() for k, v in item.items() if k != '_fila'):
+                        rows.append(item)
+            else:
+                errors.append('Formato no soportado. Usa archivo .xlsx, .xls o .csv.')
+        except Exception as exc:
+            errors.append(f'No fue posible leer el archivo: {exc}')
+
+        return rows, errors
+
+    def _parsear_monto(self, raw):
+        val = (raw or '').strip()
+        if not val:
+            raise InvalidOperation('Monto vacío')
+        normalized = val.replace('.', '').replace(',', '.')
+        return Decimal(normalized)
+
+    def _beneficio_empresa(self, empresa, beneficio_id):
+        try:
+            return TipoBeneficioSindicato.objects.get(pk=beneficio_id, empresa=empresa)
+        except TipoBeneficioSindicato.DoesNotExist:
+            return None
+
+    def _periodo_abierto(self, empresa, periodo):
+        return not ConsolidadoMensualSindicato.objects.filter(
+            empresa=empresa,
+            periodo=periodo,
+            estado__in=[
+                ConsolidadoMensualSindicato.ESTADO_CERRADO,
+                ConsolidadoMensualSindicato.ESTADO_EXPORTADO,
+            ],
+        ).exists()
+
+    def _validar_y_previsualizar(self, empresa, beneficio, periodo, filas, source_tag):
+        aliases = {
+            'rut': ['rut'],
+            'nombre': ['nombre', 'socio', 'nombre_socio'],
+            'monto': ['monto', 'valor'],
+            'observacion': ['observacion', 'observaciones'],
+            'referencia_externa': ['referencia_externa', 'referencia', 'folio'],
+            'site': ['site'],
+            'cantidad': ['cantidad'],
+            'tipo_vale': ['tipo_de_vale', 'tipo_vale'],
+            'numero_linea': ['numero_linea', 'numero_de_linea'],
+            'fecha_entrega': ['fecha_entrega'],
+        }
+        preview = []
+        valid_rows = []
+        refs_seen = set()
+
+        for row in filas:
+            fila_num = row.get('_fila', '?')
+            rut_raw = self._resolver_valor(row, aliases['rut'])
+            nombre = self._resolver_valor(row, aliases['nombre'])
+            monto_raw = self._resolver_valor(row, aliases['monto'])
+            observacion = self._resolver_valor(row, aliases['observacion'])
+            referencia = self._resolver_valor(row, aliases['referencia_externa'])
+
+            extras = []
+            for field, title in (
+                ('site', 'Site'),
+                ('cantidad', 'Cantidad'),
+                ('tipo_vale', 'Tipo vale'),
+                ('numero_linea', 'Numero linea'),
+                ('fecha_entrega', 'Fecha entrega'),
+            ):
+                value = self._resolver_valor(row, aliases[field])
+                if value:
+                    extras.append(f'{title}: {value}')
+
+            if extras:
+                observacion = f"{observacion} | {' | '.join(extras)}".strip(' |')
+
+            rut = _normalizar_rut_import(rut_raw)
+            if not rut or not _validar_rut_chileno_import(rut):
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut_raw or '-',
+                        'nombre': nombre or '-',
+                        'monto': monto_raw or '-',
+                        'estado': 'RECHAZADA',
+                        'motivo': 'RUT inválido o vacío.',
+                    }
+                )
+                continue
+
+            if not nombre:
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut,
+                        'nombre': '-',
+                        'monto': monto_raw or '-',
+                        'estado': 'RECHAZADA',
+                        'motivo': 'Nombre es obligatorio.',
+                    }
+                )
+                continue
+
+            try:
+                monto = self._parsear_monto(monto_raw)
+            except InvalidOperation:
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut,
+                        'nombre': nombre,
+                        'monto': monto_raw or '-',
+                        'estado': 'RECHAZADA',
+                        'motivo': 'Monto inválido.',
+                    }
+                )
+                continue
+
+            if monto <= 0:
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut,
+                        'nombre': nombre,
+                        'monto': str(monto),
+                        'estado': 'RECHAZADA',
+                        'motivo': 'Monto debe ser mayor a cero.',
+                    }
+                )
+                continue
+
+            socio = SocioSindicato.objects.filter(empresa=empresa, rut=rut).first()
+            if socio is None:
+                estado_socio = 'CREAR_SOCIO'
+            else:
+                estado_socio = 'SOCIO_EXISTENTE'
+
+            referencia_informada = bool(referencia)
+            if not referencia:
+                referencia = f"AUTO-{source_tag}-{fila_num}"
+
+            dup_qs = MovimientoSindicato.objects.filter(
+                empresa=empresa,
+                socio=socio,
+                tipo_beneficio=beneficio,
+                periodo=periodo,
+                referencia_externa=referencia,
+            ) if socio else MovimientoSindicato.objects.none()
+
+            if referencia_informada and dup_qs.exists():
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut,
+                        'nombre': nombre,
+                        'monto': str(monto),
+                        'estado': 'RECHAZADA',
+                        'motivo': 'Referencia externa duplicada para este beneficio y período.',
+                    }
+                )
+                continue
+
+            key_ref = (rut, referencia)
+            if key_ref in refs_seen:
+                preview.append(
+                    {
+                        'fila': fila_num,
+                        'rut': rut,
+                        'nombre': nombre,
+                        'monto': str(monto),
+                        'estado': 'RECHAZADA',
+                        'motivo': 'Referencia duplicada dentro del archivo.',
+                    }
+                )
+                continue
+            refs_seen.add(key_ref)
+
+            valid_rows.append(
+                {
+                    'fila': fila_num,
+                    'rut': rut,
+                    'nombre': nombre,
+                    'monto': str(monto.quantize(Decimal('1'))),
+                    'observacion': observacion,
+                    'referencia_externa': referencia,
+                    'referencia_informada': referencia_informada,
+                }
+            )
+            preview.append(
+                {
+                    'fila': fila_num,
+                    'rut': rut,
+                    'nombre': nombre,
+                    'monto': str(monto.quantize(Decimal('1'))),
+                    'estado': 'VALIDA',
+                    'motivo': 'OK' if estado_socio == 'SOCIO_EXISTENTE' else 'Se creará socio mínimo.',
+                }
+            )
+
+        return preview, valid_rows
+
+    def _ejecutar_importacion(self, empresa, beneficio, periodo, rows):
+        creados = 0
+        rechazados = []
+
+        for row in rows:
+            socio, _ = SocioSindicato.objects.get_or_create(
+                empresa=empresa,
+                rut=row['rut'],
+                defaults={
+                    'nombre': row['nombre'],
+                    'site': '',
+                    'estado_laboral': SocioSindicato.ESTADO_LABORAL_ACTIVO,
+                    'estado': SocioSindicato.ESTADO_ACTIVO,
+                },
+            )
+
+            if socio.empresa_id != empresa.id:
+                rechazados.append({'fila': row['fila'], 'motivo': 'Socio pertenece a otro tenant.'})
+                continue
+
+            ref = (row.get('referencia_externa') or '').strip()
+            if MovimientoSindicato.objects.filter(
+                empresa=empresa,
+                socio=socio,
+                tipo_beneficio=beneficio,
+                periodo=periodo,
+                referencia_externa=ref,
+            ).exists():
+                rechazados.append({'fila': row['fila'], 'motivo': 'Duplicado por referencia externa.'})
+                continue
+
+            MovimientoSindicato.objects.create(
+                empresa=empresa,
+                socio=socio,
+                tipo_beneficio=beneficio,
+                periodo=periodo,
+                monto=Decimal(row['monto']),
+                estado=MovimientoSindicato.ESTADO_PENDIENTE,
+                observacion=row.get('observacion') or '',
+                referencia_externa=ref,
+                creado_por=self.request.user,
+            )
+            creados += 1
+
+        return creados, rechazados
+
+    def _build_context(self, empresa, **extra):
+        beneficios = TipoBeneficioSindicato.objects.filter(
+            empresa=empresa,
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        ).order_by('orden_export', 'nombre') if empresa else TipoBeneficioSindicato.objects.none()
+        context = {
+            'step': 'upload',
+            'beneficios': beneficios,
+        }
+        context.update(extra)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(None, error='No se pudo determinar la empresa del usuario.'),
+            )
+        return render(request, self.template_name, self._build_context(empresa))
+
+    def post(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        if empresa is None:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(None, error='No se pudo determinar la empresa del usuario.'),
+            )
+
+        action = request.POST.get('action') or 'preview'
+
+        if action == 'confirmar':
+            payload_rows = request.session.get(self.session_rows_key)
+            payload_meta = request.session.get(self.session_meta_key)
+            if not payload_rows or not payload_meta:
+                return redirect('core:sindicato_movimiento_import')
+
+            try:
+                rows = json.loads(payload_rows)
+                meta = json.loads(payload_meta)
+            except Exception:
+                return redirect('core:sindicato_movimiento_import')
+
+            beneficio = self._beneficio_empresa(empresa, meta.get('beneficio_id'))
+            periodo = (meta.get('periodo') or '').strip()
+            if beneficio is None:
+                return render(
+                    request,
+                    self.template_name,
+                    self._build_context(empresa, error='Beneficio inválido o de otra empresa.'),
+                )
+            if beneficio.estado != TipoBeneficioSindicato.ESTADO_ACTIVO:
+                return render(
+                    request,
+                    self.template_name,
+                    self._build_context(empresa, error='No se puede importar sobre un beneficio inactivo.'),
+                )
+            if not PERIODO_REGEX_SIND.match(periodo) or not self._periodo_abierto(empresa, periodo):
+                return render(
+                    request,
+                    self.template_name,
+                    self._build_context(empresa, error='El período está cerrado o es inválido.'),
+                )
+
+            creados, rechazos_extra = self._ejecutar_importacion(empresa, beneficio, periodo, rows)
+            preview = json.loads(meta.get('preview') or '[]')
+            rechazadas_preview = [r for r in preview if r.get('estado') == 'RECHAZADA']
+            rechazadas = len(rechazadas_preview) + len(rechazos_extra)
+            request.session.pop(self.session_rows_key, None)
+            request.session.pop(self.session_meta_key, None)
+
+            return render(
+                request,
+                self.template_name,
+                self._build_context(
+                    empresa,
+                    step='resultado',
+                    total_filas=meta.get('total', 0),
+                    validas=meta.get('validas', 0),
+                    rechazadas=rechazadas,
+                    movimientos_creados=creados,
+                    preview=preview,
+                    rechazos_confirmacion=rechazos_extra,
+                    beneficio=beneficio,
+                    periodo=periodo,
+                ),
+            )
+
+        beneficio_id = request.POST.get('tipo_beneficio')
+        periodo = (request.POST.get('periodo') or '').strip()
+        archivo = request.FILES.get('archivo')
+
+        beneficio = self._beneficio_empresa(empresa, beneficio_id)
+        if beneficio is None:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error='Selecciona un tipo de beneficio válido.'),
+            )
+        if beneficio.estado != TipoBeneficioSindicato.ESTADO_ACTIVO:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error='El beneficio seleccionado está inactivo.'),
+            )
+        if not PERIODO_REGEX_SIND.match(periodo):
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error='Periodo inválido. Usa formato YYYY-MM.'),
+            )
+        if not self._periodo_abierto(empresa, periodo):
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error='El período está cerrado para nuevos movimientos.'),
+            )
+        if not archivo:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error='Debes subir un archivo para previsualizar.'),
+            )
+
+        raw_rows, parse_errors = self._leer_archivo(archivo)
+        if parse_errors:
+            return render(
+                request,
+                self.template_name,
+                self._build_context(empresa, error=' / '.join(parse_errors)),
+            )
+
+        source_tag = hashlib.sha1(f'{archivo.name}|{periodo}|{beneficio.id}'.encode('utf-8')).hexdigest()[:12]
+        preview, valid_rows = self._validar_y_previsualizar(empresa, beneficio, periodo, raw_rows, source_tag)
+
+        request.session[self.session_rows_key] = json.dumps(valid_rows)
+        request.session[self.session_meta_key] = json.dumps(
+            {
+                'beneficio_id': beneficio.id,
+                'periodo': periodo,
+                'total': len(preview),
+                'validas': len(valid_rows),
+                'preview': json.dumps(preview),
+            }
+        )
+
+        return render(
+            request,
+            self.template_name,
+            self._build_context(
+                empresa,
+                step='preview',
+                total_filas=len(preview),
+                validas=len(valid_rows),
+                rechazadas=len(preview) - len(valid_rows),
+                preview=preview,
+                beneficio=beneficio,
+                periodo=periodo,
+            ),
+        )
 
 
 class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixin, TemplateView):

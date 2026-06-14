@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+{% block title %}Importar Movimientos Sindicato{% endblock %}
+{% block content %}
+<h2>Importar Movimientos Sindicato</h2>
+
+{% if error %}
+  <p style="color:#b00020;">{{ error }}</p>
+{% endif %}
+
+{% if step == 'upload' %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p>
+      <label>Tipo de beneficio:</label>
+      <select name="tipo_beneficio" required>
+        <option value="">-- Selecciona --</option>
+        {% for b in beneficios %}
+          <option value="{{ b.id }}">{{ b.codigo }} - {{ b.nombre }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <label>Período (YYYY-MM):</label>
+      <input type="text" name="periodo" placeholder="2026-06" required>
+    </p>
+    <p>
+      <label>Archivo Excel/CSV:</label>
+      <input type="file" name="archivo" accept=".xlsx,.xls,.csv" required>
+    </p>
+    <button type="submit">Previsualizar</button>
+  </form>
+
+  <h4>Columnas esperadas</h4>
+  <p>Obligatorias: RUT, Nombre, Monto.</p>
+  <p>Opcionales: Observación, Referencia externa, Site, Cantidad, Tipo de vale, Número línea, Fecha entrega.</p>
+{% elif step == 'preview' %}
+  <p><strong>Beneficio:</strong> {{ beneficio.nombre }} | <strong>Período:</strong> {{ periodo }}</p>
+  <p>Total filas: {{ total_filas }} | Válidas: {{ validas }} | Rechazadas: {{ rechazadas }}</p>
+
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Fila</th>
+        <th>RUT</th>
+        <th>Nombre</th>
+        <th>Monto</th>
+        <th>Estado</th>
+        <th>Motivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in preview %}
+      <tr>
+        <td>{{ row.fila }}</td>
+        <td>{{ row.rut }}</td>
+        <td>{{ row.nombre }}</td>
+        <td>{{ row.monto }}</td>
+        <td>{{ row.estado }}</td>
+        <td>{{ row.motivo }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if validas > 0 %}
+  <form method="post" style="margin-top:16px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="confirmar">
+    <button type="submit">Confirmar importación</button>
+  </form>
+  {% endif %}
+
+  <p><a href="{% url 'core:sindicato_movimiento_import' %}">Subir otro archivo</a></p>
+{% elif step == 'resultado' %}
+  <p><strong>Beneficio:</strong> {{ beneficio.nombre }} | <strong>Período:</strong> {{ periodo }}</p>
+  <p>Total filas leídas: {{ total_filas }}</p>
+  <p>Filas válidas (preview): {{ validas }}</p>
+  <p>Filas rechazadas: {{ rechazadas }}</p>
+  <p>Movimientos creados: {{ movimientos_creados }}</p>
+
+  {% if rechazos_confirmacion %}
+    <h4>Rechazos al confirmar</h4>
+    <ul>
+      {% for r in rechazos_confirmacion %}
+        <li>Fila {{ r.fila }}: {{ r.motivo }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h4>Detalle por fila</h4>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Fila</th>
+        <th>RUT</th>
+        <th>Nombre</th>
+        <th>Monto</th>
+        <th>Estado</th>
+        <th>Motivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in preview %}
+      <tr>
+        <td>{{ row.fila }}</td>
+        <td>{{ row.rut }}</td>
+        <td>{{ row.nombre }}</td>
+        <td>{{ row.monto }}</td>
+        <td>{{ row.estado }}</td>
+        <td>{{ row.motivo }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="margin-top:16px;">
+    <a href="{% url 'core:sindicato_movimiento_import' %}">Nueva importación</a> |
+    <a href="{% url 'core:sindicato_movimiento_list' %}">Volver a movimientos</a>
+  </p>
+{% endif %}
+{% endblock %}
