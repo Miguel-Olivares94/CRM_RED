@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LogoutView as DjangoLogoutView
 from django.core.exceptions import PermissionDenied
@@ -36,6 +37,13 @@ from .mixins import (
     ContactoQuerysetFilterMixin, LlamadaQuerysetFilterMixin,
     SeguimientoQuerysetFilterMixin, ComisionQuerysetFilterMixin,
     TenantFilterMixin, get_user_role
+)
+from .services.sindicato_consolidado import (
+    ConsolidadoBloqueadoError,
+    ConsolidadoNoExisteError,
+    cerrar_consolidado_periodo,
+    generar_o_recalcular_consolidado,
+    recalcular_consolidado_abierto,
 )
 
 
@@ -2135,6 +2143,10 @@ class SindicatoRolePermissionMixin:
             return _es_tesoreria_sindicato(user)
         if permiso == 'movimientos_importar':
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
+        if permiso == 'consolidado_ver':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'consolidado_editar':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
         if permiso == 'consulta_rut':
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
         return False
@@ -2876,6 +2888,101 @@ class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixi
             .order_by('-periodo')[:6]
         )
         return context
+
+
+class ConsolidadoSindicatoHistorialView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = ConsolidadoMensualSindicato
+    template_name = 'core/sindicato/consolidado_historial.html'
+    context_object_name = 'consolidados'
+    permiso_ver = 'consolidado_ver'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(ConsolidadoMensualSindicato.objects.all())
+        periodo = self.request.GET.get('periodo', '').strip()
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+        return qs.order_by('-periodo', '-updated_at')
+
+
+class ConsolidadoSindicatoDetalleView(SindicatoTenantMixin, SindicatoRolePermissionMixin, DetailView):
+    model = ConsolidadoMensualSindicato
+    template_name = 'core/sindicato/consolidado_detalle.html'
+    context_object_name = 'consolidado'
+    permiso_ver = 'consolidado_ver'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(ConsolidadoMensualSindicato.objects.all())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        consolidado = self.object
+        context['detalles'] = (
+            ConsolidadoDetalleSindicato.objects.select_related('socio', 'tipo_beneficio')
+            .filter(consolidado=consolidado)
+            .order_by('socio__nombre', 'tipo_beneficio__orden_export', 'tipo_beneficio__nombre')
+        )
+        context['puede_editar_consolidado'] = self._check_permiso('consolidado_editar')
+        return context
+
+
+class ConsolidadoSindicatoGenerarView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'consolidado_editar'
+    permiso_editar = 'consolidado_editar'
+
+    def post(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        periodo = (request.POST.get('periodo') or '').strip()
+        if empresa is None:
+            return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
+
+        try:
+            resultado = generar_o_recalcular_consolidado(empresa=empresa, periodo=periodo, usuario=request.user)
+            messages.success(
+                request,
+                f"{resultado.accion} OK para {resultado.periodo}. Detalles: {resultado.total_detalles_generados}.",
+            )
+        except (ValueError, ConsolidadoBloqueadoError) as exc:
+            messages.error(request, str(exc))
+        return redirect('core:sindicato_consolidado_historial')
+
+
+class ConsolidadoSindicatoRecalcularView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'consolidado_editar'
+    permiso_editar = 'consolidado_editar'
+
+    def post(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        periodo = (request.POST.get('periodo') or '').strip()
+        if empresa is None:
+            return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
+
+        try:
+            resultado = recalcular_consolidado_abierto(empresa=empresa, periodo=periodo, usuario=request.user)
+            messages.success(
+                request,
+                f"Recalculo OK para {resultado.periodo}. Detalles: {resultado.total_detalles_generados}.",
+            )
+        except (ValueError, ConsolidadoNoExisteError, ConsolidadoBloqueadoError) as exc:
+            messages.error(request, str(exc))
+        return redirect('core:sindicato_consolidado_historial')
+
+
+class ConsolidadoSindicatoCerrarPeriodoView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'consolidado_editar'
+    permiso_editar = 'consolidado_editar'
+
+    def post(self, request, *args, **kwargs):
+        empresa = self.get_empresa_usuario()
+        periodo = (request.POST.get('periodo') or '').strip()
+        if empresa is None:
+            return HttpResponseForbidden('No se pudo determinar la empresa del usuario.')
+
+        try:
+            consolidado = cerrar_consolidado_periodo(empresa=empresa, periodo=periodo, usuario=request.user)
+            messages.success(request, f"Periodo {consolidado.periodo} cerrado correctamente.")
+        except (ValueError, ConsolidadoNoExisteError, ConsolidadoBloqueadoError) as exc:
+            messages.error(request, str(exc))
+        return redirect('core:sindicato_consolidado_historial')
 
 
 # ==================== AUTENTICACIÓN ====================

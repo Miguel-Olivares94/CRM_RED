@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+{% block title %}Consolidados Sindicato{% endblock %}
+{% block content %}
+<h2>Historial de Consolidados</h2>
+
+<form method="get" style="margin-bottom: 12px;">
+  <label>Periodo (YYYY-MM):</label>
+  <input type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="2026-08">
+  <button type="submit">Filtrar</button>
+</form>
+
+<form method="post" action="{% url 'core:sindicato_consolidado_generar' %}" style="margin-bottom: 20px;">
+  {% csrf_token %}
+  <label>Generar/Recalcular periodo:</label>
+  <input type="text" name="periodo" placeholder="2026-08" required>
+  <button type="submit">Generar</button>
+</form>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Periodo</th>
+      <th>Estado</th>
+      <th>Total socios</th>
+      <th>Total monto</th>
+      <th>Fecha generación</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in consolidados %}
+    <tr>
+      <td>{{ c.periodo }}</td>
+      <td>{{ c.get_estado_display }}</td>
+      <td>{{ c.total_socios }}</td>
+      <td>{{ c.total_monto }}</td>
+      <td>{{ c.fecha_generacion|default:"-" }}</td>
+      <td>
+        <a href="{% url 'core:sindicato_consolidado_detalle' c.id %}">Ver detalle</a>
+        {% if c.estado == 'ABIERTO' %}
+        | <form method="post" action="{% url 'core:sindicato_consolidado_recalcular' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="periodo" value="{{ c.periodo }}">
+            <button type="submit">Recalcular</button>
+          </form>
+        | <form method="post" action="{% url 'core:sindicato_consolidado_cerrar' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="periodo" value="{{ c.periodo }}">
+            <button type="submit">Cerrar periodo</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">Sin consolidados</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

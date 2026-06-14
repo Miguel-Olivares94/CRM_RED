@@ -4,7 +4,15 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AuditoriaSindicato, Empresa, MovimientoSindicato, SocioSindicato, TipoBeneficioSindicato, UserProfile
+from core.models import (
+    AuditoriaSindicato,
+    ConsolidadoMensualSindicato,
+    Empresa,
+    MovimientoSindicato,
+    SocioSindicato,
+    TipoBeneficioSindicato,
+    UserProfile,
+)
 
 
 User = get_user_model()
@@ -382,3 +390,139 @@ class SindicatoImportViewTests(TestCase):
         audit = AuditoriaSindicato.objects.latest('created_at')
         self.assertEqual(audit.empresa, self.empresa_a)
         self.assertNotEqual(audit.empresa, self.empresa_b)
+
+
+class SindicatoConsolidadoViewsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa_a = Empresa.objects.create(nombre='Empresa A', tipo='CLIENTE')
+        cls.empresa_b = Empresa.objects.create(nombre='Empresa B', tipo='CLIENTE')
+
+        cls.grp_admin = Group.objects.create(name='Administracion')
+        cls.grp_tesoreria = Group.objects.create(name='Tesoreria')
+        cls.grp_dirigente = Group.objects.create(name='Dirigente')
+
+        cls.admin_a = User.objects.create_user(username='admin_a', email='admin_a@test.cl', password='x')
+        cls.admin_a.groups.add(cls.grp_admin)
+        UserProfile.objects.create(user=cls.admin_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.tesoreria_a = User.objects.create_user(username='tes_a', email='tes_a@test.cl', password='x')
+        cls.tesoreria_a.groups.add(cls.grp_tesoreria)
+        UserProfile.objects.create(user=cls.tesoreria_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.dirigente_a = User.objects.create_user(username='dir_a', email='dir_a@test.cl', password='x')
+        cls.dirigente_a.groups.add(cls.grp_dirigente)
+        UserProfile.objects.create(user=cls.dirigente_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.socio_a = SocioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            rut='12345678-5',
+            nombre='Socio A',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+            orden_export=1,
+        )
+
+        cls.socio_b = SocioSindicato.objects.create(
+            empresa=cls.empresa_b,
+            rut='11111111-1',
+            nombre='Socio B',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_b = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_b,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+            orden_export=1,
+        )
+
+    def test_dirigente_ve_historial_pero_no_genera(self):
+        self.client.force_login(self.dirigente_a)
+        resp_hist = self.client.get(reverse('core:sindicato_consolidado_historial'))
+        self.assertEqual(resp_hist.status_code, 200)
+
+        resp_gen = self.client.post(
+            reverse('core:sindicato_consolidado_generar'),
+            data={'periodo': '2026-08'},
+        )
+        self.assertEqual(resp_gen.status_code, 403)
+
+    def test_generar_consolidado_desde_view_usa_servicio(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-08',
+            monto=10000,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='A-1',
+        )
+        self.client.force_login(self.tesoreria_a)
+
+        resp = self.client.post(
+            reverse('core:sindicato_consolidado_generar'),
+            data={'periodo': '2026-08'},
+        )
+        self.assertEqual(resp.status_code, 302)
+
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-08')
+        self.assertEqual(cons.total_socios, 1)
+        self.assertEqual(cons.total_monto, 10000)
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='GENERAR_CONSOLIDADO',
+                periodo='2026-08',
+            ).exists()
+        )
+
+    def test_cerrar_periodo_desde_view(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-09',
+            monto=5000,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='A-2',
+        )
+        self.client.force_login(self.admin_a)
+        self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': '2026-09'})
+
+        resp_cerrar = self.client.post(
+            reverse('core:sindicato_consolidado_cerrar'),
+            data={'periodo': '2026-09'},
+        )
+        self.assertEqual(resp_cerrar.status_code, 302)
+
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-09')
+        self.assertEqual(cons.estado, ConsolidadoMensualSindicato.ESTADO_CERRADO)
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='CERRAR_CONSOLIDADO',
+                periodo='2026-09',
+            ).exists()
+        )
+
+    def test_historial_no_mezcla_tenant(self):
+        ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_b,
+            periodo='2026-08',
+            estado=ConsolidadoMensualSindicato.ESTADO_ABIERTO,
+            total_socios=1,
+            total_monto=1000,
+        )
+        self.client.force_login(self.tesoreria_a)
+
+        resp = self.client.get(reverse('core:sindicato_consolidado_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.context['consolidados']), [])

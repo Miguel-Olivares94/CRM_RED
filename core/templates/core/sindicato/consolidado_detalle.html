@@ -1,0 +1,51 @@
+{% extends 'core/base.html' %}
+{% block title %}Detalle Consolidado{% endblock %}
+{% block content %}
+<h2>Detalle Consolidado {{ consolidado.periodo }}</h2>
+
+<p><strong>Estado:</strong> {{ consolidado.get_estado_display }}</p>
+<p><strong>Total socios:</strong> {{ consolidado.total_socios }}</p>
+<p><strong>Total monto:</strong> {{ consolidado.total_monto }}</p>
+
+<p>
+  <a href="{% url 'core:sindicato_consolidado_historial' %}">Volver al historial</a>
+</p>
+
+{% if puede_editar_consolidado and consolidado.estado == 'ABIERTO' %}
+<form method="post" action="{% url 'core:sindicato_consolidado_recalcular' %}" style="display:inline;">
+  {% csrf_token %}
+  <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
+  <button type="submit">Recalcular</button>
+</form>
+<form method="post" action="{% url 'core:sindicato_consolidado_cerrar' %}" style="display:inline;">
+  {% csrf_token %}
+  <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
+  <button type="submit">Cerrar periodo</button>
+</form>
+{% endif %}
+
+<table border="1" cellpadding="6" cellspacing="0" style="margin-top:12px;">
+  <thead>
+    <tr>
+      <th>Socio</th>
+      <th>RUT</th>
+      <th>Beneficio</th>
+      <th>Monto aprobado</th>
+      <th>Motivo ajuste</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in detalles %}
+    <tr>
+      <td>{{ d.socio.nombre }}</td>
+      <td>{{ d.socio.rut }}</td>
+      <td>{{ d.tipo_beneficio.nombre }}</td>
+      <td>{{ d.monto_aprobado }}</td>
+      <td>{{ d.motivo_ajuste|default:"-" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">Sin detalles para este período</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

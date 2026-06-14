@@ -23,6 +23,10 @@ class ConsolidadoBloqueadoError(Exception):
     pass
 
 
+class ConsolidadoNoExisteError(Exception):
+    pass
+
+
 @dataclass
 class ConsolidadoResultado:
     consolidado_id: int
@@ -193,3 +197,60 @@ def generar_o_recalcular_consolidado(*, empresa, periodo: str, usuario=None) -> 
         observados_licencia=observados_licencia,
         observados_movimiento=observados_movimiento,
     )
+
+
+@transaction.atomic
+def recalcular_consolidado_abierto(*, empresa, periodo: str, usuario=None) -> ConsolidadoResultado:
+    if not PERIODO_REGEX.match(periodo or ""):
+        raise ValueError("Periodo inválido. Usa formato YYYY-MM.")
+
+    try:
+        consolidado = ConsolidadoMensualSindicato.objects.get(empresa=empresa, periodo=periodo)
+    except ConsolidadoMensualSindicato.DoesNotExist as exc:
+        raise ConsolidadoNoExisteError("No existe consolidado para ese período.") from exc
+
+    if consolidado.estado != ConsolidadoMensualSindicato.ESTADO_ABIERTO:
+        raise ConsolidadoBloqueadoError("Solo se puede recalcular un consolidado en estado ABIERTO.")
+
+    return generar_o_recalcular_consolidado(empresa=empresa, periodo=periodo, usuario=usuario)
+
+
+@transaction.atomic
+def cerrar_consolidado_periodo(*, empresa, periodo: str, usuario=None) -> ConsolidadoMensualSindicato:
+    if not PERIODO_REGEX.match(periodo or ""):
+        raise ValueError("Periodo inválido. Usa formato YYYY-MM.")
+
+    try:
+        consolidado = ConsolidadoMensualSindicato.objects.get(empresa=empresa, periodo=periodo)
+    except ConsolidadoMensualSindicato.DoesNotExist as exc:
+        raise ConsolidadoNoExisteError("No existe consolidado para ese período.") from exc
+
+    if consolidado.estado in (
+        ConsolidadoMensualSindicato.ESTADO_CERRADO,
+        ConsolidadoMensualSindicato.ESTADO_EXPORTADO,
+    ):
+        raise ConsolidadoBloqueadoError("El período ya está cerrado o exportado.")
+
+    consolidado.estado = ConsolidadoMensualSindicato.ESTADO_CERRADO
+    consolidado.save(update_fields=["estado", "updated_at"])
+
+    AuditoriaSindicato.objects.create(
+        empresa=empresa,
+        usuario=usuario,
+        accion="CERRAR_CONSOLIDADO",
+        entidad="ConsolidadoMensualSindicato",
+        entidad_id=str(consolidado.id),
+        periodo=periodo,
+        resumen=(
+            f"CERRAR_CONSOLIDADO {periodo} | socios={consolidado.total_socios} | "
+            f"monto={int(consolidado.total_monto)}"
+        )[:255],
+        payload={
+            "periodo": periodo,
+            "estado": consolidado.estado,
+            "total_socios": consolidado.total_socios,
+            "total_monto": int(consolidado.total_monto),
+        },
+    )
+
+    return consolidado

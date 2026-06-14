@@ -34,6 +34,11 @@ from .views import (
     MovimientoSindicatoUpdateView,
     MovimientoSindicatoImportView,
     ConsultaRutSindicatoView,
+    ConsolidadoSindicatoHistorialView,
+    ConsolidadoSindicatoDetalleView,
+    ConsolidadoSindicatoGenerarView,
+    ConsolidadoSindicatoRecalcularView,
+    ConsolidadoSindicatoCerrarPeriodoView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -121,6 +126,11 @@ urlpatterns = [
     path('sindicato/movimientos/nuevo/', MovimientoSindicatoCreateView.as_view(), name='sindicato_movimiento_create'),
     path('sindicato/movimientos/<int:pk>/editar/', MovimientoSindicatoUpdateView.as_view(), name='sindicato_movimiento_update'),
     path('sindicato/consulta-rut/', ConsultaRutSindicatoView.as_view(), name='sindicato_consulta_rut'),
+    path('sindicato/consolidados/', ConsolidadoSindicatoHistorialView.as_view(), name='sindicato_consolidado_historial'),
+    path('sindicato/consolidados/<int:pk>/', ConsolidadoSindicatoDetalleView.as_view(), name='sindicato_consolidado_detalle'),
+    path('sindicato/consolidados/generar/', ConsolidadoSindicatoGenerarView.as_view(), name='sindicato_consolidado_generar'),
+    path('sindicato/consolidados/recalcular/', ConsolidadoSindicatoRecalcularView.as_view(), name='sindicato_consolidado_recalcular'),
+    path('sindicato/consolidados/cerrar/', ConsolidadoSindicatoCerrarPeriodoView.as_view(), name='sindicato_consolidado_cerrar'),
 
     # ── Asistente / Copiloto de IA ────────────────────────────────────
     path(
