@@ -28,7 +28,7 @@ from .models import (
     Cliente, Contacto, Oportunidad, Llamada,
     MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
     Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
-    ConsolidadoMensualSindicato,
+    ConsolidadoMensualSindicato, ConsolidadoDetalleSindicato,
     AuditoriaSindicato,
 )
 from .mixins import (

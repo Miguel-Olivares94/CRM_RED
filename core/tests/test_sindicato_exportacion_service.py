@@ -166,3 +166,21 @@ class SindicatoExportacionServiceTests(TestCase):
         self.assertEqual(audit.usuario, self.user)
         self.assertEqual(audit.payload.get('total_socios'), 2)
         self.assertEqual(audit.payload.get('total_monto'), 32000)
+
+    def test_primer_export_cambia_estado_a_exportado(self):
+        cons = self._crear_consolidado_cerrado()
+        exportar_consolidado_excel(empresa=self.empresa_a, consolidado_id=cons.id, usuario=self.user)
+
+        cons.refresh_from_db()
+        self.assertEqual(cons.estado, ConsolidadoMensualSindicato.ESTADO_EXPORTADO)
+
+    def test_permite_reexportar_si_ya_esta_exportado(self):
+        cons = self._crear_consolidado_cerrado()
+        exportar_consolidado_excel(empresa=self.empresa_a, consolidado_id=cons.id, usuario=self.user)
+
+        cons.refresh_from_db()
+        self.assertEqual(cons.estado, ConsolidadoMensualSindicato.ESTADO_EXPORTADO)
+
+        second = exportar_consolidado_excel(empresa=self.empresa_a, consolidado_id=cons.id, usuario=self.user)
+        self.assertTrue(second.filename.endswith('.xlsx'))
+        self.assertGreater(len(second.content), 0)

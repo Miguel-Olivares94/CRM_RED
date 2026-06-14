@@ -1,8 +1,12 @@
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+
+from openpyxl import load_workbook
 
 from core.models import (
     AuditoriaSindicato,
@@ -579,3 +583,139 @@ class SindicatoConsolidadoViewsTests(TestCase):
                 periodo='2026-12',
             ).exists()
         )
+
+    def test_detalle_consolidado_renderiza_sin_nameerror(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-10',
+            monto=6000,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='DET-1',
+        )
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': '2026-10'})
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-10')
+
+        resp = self.client.get(reverse('core:sindicato_consolidado_detalle', kwargs={'pk': cons.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.context['detalles'])[0].monto_aprobado, 6000)
+
+    def test_exportar_consolidado_ya_exportado_sigue_disponible(self):
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo='2026-11',
+            monto=7000,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='EXP-REPEAT-1',
+        )
+        self.client.force_login(self.admin_a)
+        self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': '2026-11'})
+        self.client.post(reverse('core:sindicato_consolidado_cerrar'), data={'periodo': '2026-11'})
+        cons = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa_a, periodo='2026-11')
+
+        first = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons.pk}))
+        self.assertEqual(first.status_code, 200)
+        cons.refresh_from_db()
+        self.assertEqual(cons.estado, ConsolidadoMensualSindicato.ESTADO_EXPORTADO)
+
+        second = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons.pk}))
+        self.assertEqual(second.status_code, 200)
+
+
+class SindicatoConsolidadoE2EFlowTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa = Empresa.objects.create(nombre='Empresa E2E', tipo='CLIENTE')
+        cls.grp_tesoreria = Group.objects.create(name='Tesoreria')
+
+        cls.tesoreria = User.objects.create_user(username='tes_e2e', email='tes_e2e@test.cl', password='x')
+        cls.tesoreria.groups.add(cls.grp_tesoreria)
+        UserProfile.objects.create(user=cls.tesoreria, empresa=cls.empresa, role='ADMIN')
+
+        cls.benef = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+            orden_export=1,
+        )
+
+    def test_flujo_e2e_importar_generar_detalle_cerrar_exportar_y_validar_excel(self):
+        self.client.force_login(self.tesoreria)
+        periodo = '2026-12'
+
+        # 1) Importar movimientos
+        csv_content = (
+            'RUT,Nombre,Monto,Observacion,Referencia externa,Site\n'
+            '12.345.678-5,Socio Uno,10000,ok,REF-E2E-1,Site Norte\n'
+            '11.111.111-1,Socio Dos,15000,ok,REF-E2E-2,Site Sur\n'
+        )
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={
+                'tipo_beneficio': self.benef.id,
+                'periodo': periodo,
+                'archivo': SimpleUploadedFile('e2e_movs.csv', csv_content.encode('utf-8'), content_type='text/csv'),
+            },
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Válidas: 2')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 2')
+        self.assertEqual(MovimientoSindicato.objects.filter(empresa=self.empresa, periodo=periodo).count(), 2)
+
+        # 2) Generar consolidado
+        generar = self.client.post(reverse('core:sindicato_consolidado_generar'), data={'periodo': periodo})
+        self.assertEqual(generar.status_code, 302)
+        consolidado = ConsolidadoMensualSindicato.objects.get(empresa=self.empresa, periodo=periodo)
+        self.assertEqual(consolidado.estado, ConsolidadoMensualSindicato.ESTADO_ABIERTO)
+        self.assertEqual(consolidado.total_socios, 2)
+        self.assertEqual(int(consolidado.total_monto), 25000)
+
+        # 3) Ver detalle
+        detalle = self.client.get(reverse('core:sindicato_consolidado_detalle', kwargs={'pk': consolidado.pk}))
+        self.assertEqual(detalle.status_code, 200)
+        self.assertEqual(len(list(detalle.context['detalles'])), 2)
+
+        # 4) Cerrar período
+        cerrar = self.client.post(reverse('core:sindicato_consolidado_cerrar'), data={'periodo': periodo})
+        self.assertEqual(cerrar.status_code, 302)
+        consolidado.refresh_from_db()
+        self.assertEqual(consolidado.estado, ConsolidadoMensualSindicato.ESTADO_CERRADO)
+
+        # 5) Exportar Excel
+        export = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': consolidado.pk}))
+        self.assertEqual(export.status_code, 200)
+        self.assertIn(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            export['Content-Type'],
+        )
+
+        # 6) Validar contenido del archivo generado
+        wb = load_workbook(filename=BytesIO(export.content))
+        ws = wb['Consolidado']
+        headers = [c.value for c in ws[1]]
+        self.assertEqual(headers[:4], ['RUT', 'Nombre', 'Site', 'Estado laboral'])
+        self.assertIn('Gas', headers)
+        self.assertEqual(headers[-1], 'Total General')
+
+        rows = list(ws.iter_rows(min_row=2, values_only=True))
+        total_row = None
+        for row in rows:
+            if row[0] == 'TOTAL':
+                total_row = row
+                break
+        self.assertIsNotNone(total_row)
+
+        gas_idx = headers.index('Gas')
+        total_idx = len(headers) - 1
+        sum_gas = sum(int(r[gas_idx] or 0) for r in rows if r[0] != 'TOTAL')
+        sum_total = sum(int(r[total_idx] or 0) for r in rows if r[0] != 'TOTAL')
+        self.assertEqual(int(total_row[gas_idx] or 0), sum_gas)
+        self.assertEqual(int(total_row[total_idx] or 0), sum_total)

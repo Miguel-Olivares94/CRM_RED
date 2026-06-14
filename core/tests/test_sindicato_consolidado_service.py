@@ -246,6 +246,29 @@ class SindicatoConsolidadoServiceTests(TestCase):
         self.assertEqual(consolidado.total_monto, Decimal("1000"))
         self.assertEqual(ConsolidadoDetalleSindicato.objects.filter(consolidado=consolidado).count(), 1)
 
+    def test_bloquea_generacion_si_periodo_exportado(self):
+        consolidado = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo="2026-10",
+            estado=ConsolidadoMensualSindicato.ESTADO_EXPORTADO,
+            total_socios=1,
+            total_monto=Decimal("2000"),
+        )
+        ConsolidadoDetalleSindicato.objects.create(
+            empresa=self.empresa_a,
+            consolidado=consolidado,
+            socio=self.socio_activo_a,
+            tipo_beneficio=self.benef_activo_a,
+            monto_aprobado=Decimal("2000"),
+        )
+
+        with self.assertRaises(ConsolidadoBloqueadoError):
+            generar_o_recalcular_consolidado(
+                empresa=self.empresa_a,
+                periodo="2026-10",
+                usuario=self.user,
+            )
+
     def test_aislamiento_multiempresa_en_generacion(self):
         self._crear_datos_periodo_2026_08()
 
