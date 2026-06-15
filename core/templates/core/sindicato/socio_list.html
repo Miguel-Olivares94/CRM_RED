@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Socios Sindicato{% endblock %}
 {% block content %}
 <h2>Socios Sindicato</h2>
@@ -11,11 +11,11 @@
   {% for socio in socios %}
     <li>
       {{ socio.rut }} - {{ socio.nombre }} ({{ socio.empresa.nombre }})
-      <a href="{% url 'core:sindicato_socio_update' socio.pk %}">Editar</a>
+      <a href="{% url 'core:sindiapp_socio_update' socio.pk %}">Editar</a>
     </li>
   {% empty %}
     <li>Sin socios</li>
   {% endfor %}
 </ul>
-<a href="{% url 'core:sindicato_socio_create' %}">Nuevo socio</a>
+<a href="{% url 'core:sindiapp_socio_create' %}">Nuevo socio</a>
 {% endblock %}

@@ -2060,6 +2060,10 @@ def _es_dirigente_sindicato(user):
     return user.is_superuser or 'dirigente' in roles
 
 
+def _es_usuario_sindicato(user):
+    return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+
+
 def _rut_normalizado_simple(rut):
     if not rut:
         return ''
@@ -3025,6 +3029,147 @@ class ConsolidadoSindicatoExportarView(SindicatoTenantMixin, SindicatoRolePermis
         )
         response['Content-Disposition'] = f'attachment; filename="{result.filename}"'
         return response
+
+
+class SindiAppLoginView(View):
+    template_name = 'core/sindiapp/login.html'
+    form_class = EmailAuthenticationForm
+
+    def get_redirect_url(self, user):
+        if _es_usuario_sindicato(user):
+            return 'core:sindiapp_dashboard'
+        if user.is_superuser or user.groups.filter(name='Admin').exists():
+            return 'core:dashboard'
+        if user.groups.filter(name='Ejecutivo').exists():
+            return 'core:ejecutivo_clientes'
+        return 'core:dashboard'
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect(self.get_redirect_url(request.user))
+        form = self.form_class()
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user, backend='core.backends.EmailBackend')
+            return redirect(self.get_redirect_url(user))
+        return render(request, self.template_name, {'form': form})
+
+
+class SindiAppDashboardView(SindicatoTenantMixin, SindicatoRolePermissionMixin, TemplateView):
+    template_name = 'core/sindiapp/dashboard.html'
+    login_url = 'core:sindiapp_login'
+    permiso_ver = 'consolidado_ver'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        empresa = self.get_empresa_usuario()
+        periodo_actual = datetime.now().strftime('%Y-%m')
+
+        socios_qs = self.filtrar_por_tenant(SocioSindicato.objects.all())
+        beneficios_qs = self.filtrar_por_tenant(TipoBeneficioSindicato.objects.all())
+        movimientos_qs = self.filtrar_por_tenant(MovimientoSindicato.objects.all())
+        consolidados_qs = self.filtrar_por_tenant(ConsolidadoMensualSindicato.objects.all())
+
+        context.update(
+            {
+                'empresa': empresa,
+                'periodo_actual': periodo_actual,
+                'total_socios': socios_qs.count(),
+                'total_beneficios_activos': beneficios_qs.filter(
+                    estado=TipoBeneficioSindicato.ESTADO_ACTIVO
+                ).count(),
+                'total_movimientos_periodo': movimientos_qs.filter(periodo=periodo_actual).count(),
+                'total_consolidados': consolidados_qs.count(),
+                'ultimos_movimientos': movimientos_qs.select_related('socio', 'tipo_beneficio').order_by('-created_at')[:8],
+            }
+        )
+        return context
+
+
+class SindiAppAuditoriaListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    template_name = 'core/sindiapp/auditoria_list.html'
+    context_object_name = 'auditorias'
+    permiso_ver = 'consolidado_ver'
+    login_url = 'core:sindiapp_login'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(AuditoriaSindicato.objects.select_related('usuario', 'empresa'))
+        periodo = self.request.GET.get('periodo', '').strip()
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+        return qs.order_by('-created_at')[:300]
+
+
+class SindiAppSocioSindicatoListView(SocioSindicatoListView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppSocioSindicatoCreateView(SocioSindicatoCreateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppSocioSindicatoUpdateView(SocioSindicatoUpdateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppTipoBeneficioSindicatoListView(TipoBeneficioSindicatoListView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppTipoBeneficioSindicatoCreateView(TipoBeneficioSindicatoCreateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppTipoBeneficioSindicatoUpdateView(TipoBeneficioSindicatoUpdateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppMovimientoSindicatoListView(MovimientoSindicatoListView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppMovimientoSindicatoCreateView(MovimientoSindicatoCreateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppMovimientoSindicatoUpdateView(MovimientoSindicatoUpdateView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppMovimientoSindicatoImportView(MovimientoSindicatoImportView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsultaRutSindicatoView(ConsultaRutSindicatoView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoHistorialView(ConsolidadoSindicatoHistorialView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoDetalleView(ConsolidadoSindicatoDetalleView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoGenerarView(ConsolidadoSindicatoGenerarView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoRecalcularView(ConsolidadoSindicatoRecalcularView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoCerrarPeriodoView(ConsolidadoSindicatoCerrarPeriodoView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoExportarView(ConsolidadoSindicatoExportarView):
+    login_url = 'core:sindiapp_login'
 
 
 # ==================== AUTENTICACIÓN ====================

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SindiApp{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --sindi-bg: #f3f7f4;
+      --sindi-panel: #ffffff;
+      --sindi-primary: #155e63;
+      --sindi-primary-strong: #0e3e41;
+      --sindi-accent: #ffb703;
+      --sindi-text: #1f2937;
+      --sindi-muted: #6b7280;
+      --sindi-border: #dfe7e3;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 10%, #e8f4ef 0, transparent 35%),
+                  radial-gradient(circle at 80% 90%, #eef6fb 0, transparent 30%),
+                  var(--sindi-bg);
+      color: var(--sindi-text);
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      min-height: 100vh;
+    }
+
+    .sindi-shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    .sindi-sidebar {
+      background: linear-gradient(180deg, var(--sindi-primary-strong), var(--sindi-primary));
+      color: #fff;
+      padding: 18px 14px;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .sindi-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+      margin: 6px 8px 18px;
+    }
+
+    .sindi-brand .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      display: grid;
+      place-items: center;
+    }
+
+    .sindi-nav .nav-link {
+      color: rgba(255, 255, 255, 0.92);
+      border-radius: 10px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+    }
+
+    .sindi-nav .nav-link.active,
+    .sindi-nav .nav-link:hover {
+      background: rgba(255, 255, 255, 0.17);
+      color: #fff;
+    }
+
+    .sindi-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .sindi-topbar {
+      background: var(--sindi-panel);
+      border-bottom: 1px solid var(--sindi-border);
+      padding: 10px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sindi-content {
+      padding: 18px;
+    }
+
+    .sindi-card {
+      background: var(--sindi-panel);
+      border: 1px solid var(--sindi-border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(5, 36, 38, 0.05);
+    }
+
+    @media (max-width: 992px) {
+      .sindi-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sindi-sidebar {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="sindi-shell">
+    <aside class="sindi-sidebar">
+      <a href="{% url 'core:sindiapp_dashboard' %}" class="sindi-brand">
+        <span class="mark"><i class="bi bi-bank2"></i></span>
+        <span>SindiApp</span>
+      </a>
+
+      <ul class="nav flex-column sindi-nav">
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_dashboard' %}active{% endif %}" href="{% url 'core:sindiapp_dashboard' %}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_socio' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_socio_list' %}"><i class="bi bi-people-fill"></i> Socios</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_beneficio' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_beneficio_list' %}"><i class="bi bi-tags-fill"></i> Beneficios</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_movimiento' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_movimiento_list' %}"><i class="bi bi-journal-check"></i> Movimientos</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_movimiento_import' %}active{% endif %}" href="{% url 'core:sindiapp_movimiento_import' %}"><i class="bi bi-file-earmark-arrow-up"></i> Importar planillas</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_consulta_rut' %}active{% endif %}" href="{% url 'core:sindiapp_consulta_rut' %}"><i class="bi bi-search"></i> Consulta por RUT</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_consolidado' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-table"></i> Consolidados</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-download"></i> Exportación</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_auditoria_list' %}active{% endif %}" href="{% url 'core:sindiapp_auditoria_list' %}"><i class="bi bi-clipboard-data"></i> Auditoría</a></li>
+      </ul>
+    </aside>
+
+    <main class="sindi-main">
+      <div class="sindi-topbar">
+        <div>
+          <div style="font-size: 14px; color: var(--sindi-muted);">Plataforma Sindical</div>
+          <div style="font-weight: 700;">{% block page_title %}SindiApp{% endblock %}</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-secondary small"><i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}</span>
+          <form method="post" action="{% url 'core:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Salir</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="sindi-content">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Importar Movimientos Sindicato{% endblock %}
 {% block content %}
 <h2>Importar Movimientos Sindicato</h2>
@@ -70,7 +70,7 @@
   </form>
   {% endif %}
 
-  <p><a href="{% url 'core:sindicato_movimiento_import' %}">Subir otro archivo</a></p>
+  <p><a href="{% url 'core:sindiapp_movimiento_import' %}">Subir otro archivo</a></p>
 {% elif step == 'resultado' %}
   <p><strong>Beneficio:</strong> {{ beneficio.nombre }} | <strong>Período:</strong> {{ periodo }}</p>
   <p>Total filas leídas: {{ total_filas }}</p>
@@ -114,8 +114,8 @@
   </table>
 
   <p style="margin-top:16px;">
-    <a href="{% url 'core:sindicato_movimiento_import' %}">Nueva importación</a> |
-    <a href="{% url 'core:sindicato_movimiento_list' %}">Volver a movimientos</a>
+    <a href="{% url 'core:sindiapp_movimiento_import' %}">Nueva importación</a> |
+    <a href="{% url 'core:sindiapp_movimiento_list' %}">Volver a movimientos</a>
   </p>
 {% endif %}
 {% endblock %}

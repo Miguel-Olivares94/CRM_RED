@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Beneficios Sindicato{% endblock %}
 {% block content %}
 <h2>Tipos de Beneficio Sindicato</h2>
@@ -7,11 +7,11 @@
   {% for item in beneficios %}
     <li>
       {{ item.codigo }} - {{ item.nombre }} ({{ item.estado }})
-      <a href="{% url 'core:sindicato_beneficio_update' item.pk %}">Editar</a>
+      <a href="{% url 'core:sindiapp_beneficio_update' item.pk %}">Editar</a>
     </li>
   {% empty %}
     <li>Sin beneficios</li>
   {% endfor %}
 </ul>
-<a href="{% url 'core:sindicato_beneficio_create' %}">Nuevo beneficio</a>
+<a href="{% url 'core:sindiapp_beneficio_create' %}">Nuevo beneficio</a>
 {% endblock %}

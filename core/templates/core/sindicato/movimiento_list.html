@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Movimientos Sindicato{% endblock %}
 {% block content %}
 <h2>Movimientos Sindicato</h2>
@@ -8,17 +8,17 @@
 </form>
 <p>Total: {{ movimientos|length }}</p>
 {% if puede_importar %}
-  <p><a href="{% url 'core:sindicato_movimiento_import' %}">Importar movimientos (Excel/CSV)</a></p>
+  <p><a href="{% url 'core:sindiapp_movimiento_import' %}">Importar movimientos (Excel/CSV)</a></p>
 {% endif %}
 <ul>
   {% for mov in movimientos %}
     <li>
       {{ mov.periodo }} - {{ mov.socio.rut }} - {{ mov.tipo_beneficio.nombre }} - {{ mov.monto }}
-      <a href="{% url 'core:sindicato_movimiento_update' mov.pk %}">Editar</a>
+      <a href="{% url 'core:sindiapp_movimiento_update' mov.pk %}">Editar</a>
     </li>
   {% empty %}
     <li>Sin movimientos</li>
   {% endfor %}
 </ul>
-<a href="{% url 'core:sindicato_movimiento_create' %}">Nuevo movimiento</a>
+<a href="{% url 'core:sindiapp_movimiento_create' %}">Nuevo movimiento</a>
 {% endblock %}

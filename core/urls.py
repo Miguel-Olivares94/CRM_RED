@@ -2,8 +2,10 @@ from django.urls import path
 from .views import (
     # Auth
     LoginView, LogoutView, AdminRedirectView, EjecutivoClientesView, IndexView,
+    SindiAppLoginView,
     # Dashboard
     DashboardView, CreateEjecutivoView, SubordinadosManagementView,
+    SindiAppDashboardView,
     # Cliente
     ClienteListView, ClienteCreateView, ClienteDetailView, ClienteUpdateView, ClienteDeleteView,
     ClienteImportView, ClientesProspectadosView,
@@ -40,6 +42,24 @@ from .views import (
     ConsolidadoSindicatoRecalcularView,
     ConsolidadoSindicatoCerrarPeriodoView,
     ConsolidadoSindicatoExportarView,
+    SindiAppSocioSindicatoListView,
+    SindiAppSocioSindicatoCreateView,
+    SindiAppSocioSindicatoUpdateView,
+    SindiAppTipoBeneficioSindicatoListView,
+    SindiAppTipoBeneficioSindicatoCreateView,
+    SindiAppTipoBeneficioSindicatoUpdateView,
+    SindiAppMovimientoSindicatoListView,
+    SindiAppMovimientoSindicatoCreateView,
+    SindiAppMovimientoSindicatoUpdateView,
+    SindiAppMovimientoSindicatoImportView,
+    SindiAppConsultaRutSindicatoView,
+    SindiAppConsolidadoSindicatoHistorialView,
+    SindiAppConsolidadoSindicatoDetalleView,
+    SindiAppConsolidadoSindicatoGenerarView,
+    SindiAppConsolidadoSindicatoRecalcularView,
+    SindiAppConsolidadoSindicatoCerrarPeriodoView,
+    SindiAppConsolidadoSindicatoExportarView,
+    SindiAppAuditoriaListView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -53,6 +73,7 @@ urlpatterns = [
     # Autenticación
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("sindiapp/login/", SindiAppLoginView.as_view(), name="sindiapp_login"),
     
     # Dashboard - Home redirige según el rol
     path("", IndexView.as_view(), name="index"),
@@ -114,6 +135,27 @@ urlpatterns = [
 
     # API
     path("api/comunas/", api_comunas, name="api_comunas"),
+
+    # ── SindiApp (interfaz cliente) ──────────────────────────────────
+    path('sindiapp/dashboard/', SindiAppDashboardView.as_view(), name='sindiapp_dashboard'),
+    path('sindiapp/socios/', SindiAppSocioSindicatoListView.as_view(), name='sindiapp_socio_list'),
+    path('sindiapp/socios/nuevo/', SindiAppSocioSindicatoCreateView.as_view(), name='sindiapp_socio_create'),
+    path('sindiapp/socios/<int:pk>/editar/', SindiAppSocioSindicatoUpdateView.as_view(), name='sindiapp_socio_update'),
+    path('sindiapp/beneficios/', SindiAppTipoBeneficioSindicatoListView.as_view(), name='sindiapp_beneficio_list'),
+    path('sindiapp/beneficios/nuevo/', SindiAppTipoBeneficioSindicatoCreateView.as_view(), name='sindiapp_beneficio_create'),
+    path('sindiapp/beneficios/<int:pk>/editar/', SindiAppTipoBeneficioSindicatoUpdateView.as_view(), name='sindiapp_beneficio_update'),
+    path('sindiapp/movimientos/', SindiAppMovimientoSindicatoListView.as_view(), name='sindiapp_movimiento_list'),
+    path('sindiapp/importar/', SindiAppMovimientoSindicatoImportView.as_view(), name='sindiapp_movimiento_import'),
+    path('sindiapp/movimientos/nuevo/', SindiAppMovimientoSindicatoCreateView.as_view(), name='sindiapp_movimiento_create'),
+    path('sindiapp/movimientos/<int:pk>/editar/', SindiAppMovimientoSindicatoUpdateView.as_view(), name='sindiapp_movimiento_update'),
+    path('sindiapp/consulta-rut/', SindiAppConsultaRutSindicatoView.as_view(), name='sindiapp_consulta_rut'),
+    path('sindiapp/consolidados/', SindiAppConsolidadoSindicatoHistorialView.as_view(), name='sindiapp_consolidado_historial'),
+    path('sindiapp/consolidados/<int:pk>/', SindiAppConsolidadoSindicatoDetalleView.as_view(), name='sindiapp_consolidado_detalle'),
+    path('sindiapp/consolidados/generar/', SindiAppConsolidadoSindicatoGenerarView.as_view(), name='sindiapp_consolidado_generar'),
+    path('sindiapp/consolidados/recalcular/', SindiAppConsolidadoSindicatoRecalcularView.as_view(), name='sindiapp_consolidado_recalcular'),
+    path('sindiapp/consolidados/cerrar/', SindiAppConsolidadoSindicatoCerrarPeriodoView.as_view(), name='sindiapp_consolidado_cerrar'),
+    path('sindiapp/consolidados/<int:pk>/exportar/', SindiAppConsolidadoSindicatoExportarView.as_view(), name='sindiapp_consolidado_exportar'),
+    path('sindiapp/auditoria/', SindiAppAuditoriaListView.as_view(), name='sindiapp_auditoria_list'),
 
     # ── Módulo Sindicato MVP ─────────────────────────────────────────
     path('sindicato/socios/', SocioSindicatoListView.as_view(), name='sindicato_socio_list'),

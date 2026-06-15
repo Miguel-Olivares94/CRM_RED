@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Formulario Movimiento Sindicato{% endblock %}
 {% block content %}
 <h2>Movimiento Sindicato</h2>
@@ -15,5 +15,5 @@
   {{ form.as_p }}
   <button type="submit">Guardar</button>
 </form>
-<a href="{% url 'core:sindicato_movimiento_list' %}">Volver</a>
+<a href="{% url 'core:sindiapp_movimiento_list' %}">Volver</a>
 {% endblock %}

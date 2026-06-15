@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/sindiapp/base.html' %}
 {% block title %}Detalle Consolidado{% endblock %}
 {% block content %}
 <h2>Detalle Consolidado {{ consolidado.periodo }}</h2>
@@ -8,16 +8,16 @@
 <p><strong>Total monto:</strong> {{ consolidado.total_monto }}</p>
 
 <p>
-  <a href="{% url 'core:sindicato_consolidado_historial' %}">Volver al historial</a>
+  <a href="{% url 'core:sindiapp_consolidado_historial' %}">Volver al historial</a>
 </p>
 
 {% if puede_editar_consolidado and consolidado.estado == 'ABIERTO' %}
-<form method="post" action="{% url 'core:sindicato_consolidado_recalcular' %}" style="display:inline;">
+<form method="post" action="{% url 'core:sindiapp_consolidado_recalcular' %}" style="display:inline;">
   {% csrf_token %}
   <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
   <button type="submit">Recalcular</button>
 </form>
-<form method="post" action="{% url 'core:sindicato_consolidado_cerrar' %}" style="display:inline;">
+<form method="post" action="{% url 'core:sindiapp_consolidado_cerrar' %}" style="display:inline;">
   {% csrf_token %}
   <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
   <button type="submit">Cerrar periodo</button>
@@ -25,7 +25,7 @@
 {% endif %}
 
 {% if puede_editar_consolidado and consolidado.estado != 'ABIERTO' %}
-<a href="{% url 'core:sindicato_consolidado_exportar' consolidado.id %}">Exportar Excel</a>
+<a href="{% url 'core:sindiapp_consolidado_exportar' consolidado.id %}">Exportar Excel</a>
 {% endif %}
 
 <table border="1" cellpadding="6" cellspacing="0" style="margin-top:12px;">
