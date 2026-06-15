@@ -1,59 +1,86 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}Consolidados Sindicato{% endblock %}
+{% block page_title %}Consolidados{% endblock %}
 {% block content %}
-<h2>Historial de Consolidados</h2>
+<div class="sindi-card mb-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-lg-6">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">Filtrar por período</label>
+          <input class="form-control" type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="2026-08">
+        </div>
+        <div class="col-md-4 d-grid">
+          <button class="btn btn-outline-primary sindi-cta" type="submit">Filtrar</button>
+        </div>
+      </form>
+    </div>
+    <div class="col-lg-6">
+      <form method="post" action="{% url 'core:sindiapp_consolidado_generar' %}" class="row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-8">
+          <label class="form-label">Generar/Recalcular período</label>
+          <input class="form-control" type="text" name="periodo" placeholder="2026-08" required>
+        </div>
+        <div class="col-md-4 d-grid">
+          <button class="btn btn-primary sindi-cta" type="submit">Generar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-<form method="get" style="margin-bottom: 12px;">
-  <label>Periodo (YYYY-MM):</label>
-  <input type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="2026-08">
-  <button type="submit">Filtrar</button>
-</form>
-
-<form method="post" action="{% url 'core:sindiapp_consolidado_generar' %}" style="margin-bottom: 20px;">
-  {% csrf_token %}
-  <label>Generar/Recalcular periodo:</label>
-  <input type="text" name="periodo" placeholder="2026-08" required>
-  <button type="submit">Generar</button>
-</form>
-
-<table border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>Periodo</th>
-      <th>Estado</th>
-      <th>Total socios</th>
-      <th>Total monto</th>
-      <th>Fecha generación</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for c in consolidados %}
-    <tr>
-      <td>{{ c.periodo }}</td>
-      <td>{{ c.get_estado_display }}</td>
-      <td>{{ c.total_socios }}</td>
-      <td>{{ c.total_monto }}</td>
-      <td>{{ c.fecha_generacion|default:"-" }}</td>
-      <td>
-        <a href="{% url 'core:sindiapp_consolidado_detalle' c.id %}">Ver detalle</a>
-        {% if c.estado == 'ABIERTO' %}
-        | <form method="post" action="{% url 'core:sindiapp_consolidado_recalcular' %}" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="periodo" value="{{ c.periodo }}">
-            <button type="submit">Recalcular</button>
-          </form>
-        | <form method="post" action="{% url 'core:sindiapp_consolidado_cerrar' %}" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="periodo" value="{{ c.periodo }}">
-            <button type="submit">Cerrar periodo</button>
-          </form>
-        {% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="6">Sin consolidados</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="sindi-card">
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Período</th>
+          <th>Estado</th>
+          <th>Total socios</th>
+          <th>Total monto</th>
+          <th>Fecha generación</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in consolidados %}
+        <tr>
+          <td class="fw-semibold">{{ c.periodo }}</td>
+          <td>
+            {% if c.estado == 'ABIERTO' %}
+              <span class="sindi-badge sindi-badge-accent">{{ c.get_estado_display }}</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-success">{{ c.get_estado_display }}</span>
+            {% endif %}
+          </td>
+          <td>{{ c.total_socios }}</td>
+          <td class="fw-semibold">{{ c.total_monto }}</td>
+          <td>{{ c.fecha_generacion|default:"-" }}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_consolidado_detalle' c.id %}">Detalle</a>
+            {% if c.estado != 'ABIERTO' and puede_exportar %}
+            <a class="btn btn-sm btn-success" href="{% url 'core:sindiapp_consolidado_exportar' c.id %}"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar</a>
+            {% endif %}
+            {% if c.estado == 'ABIERTO' %}
+            <form method="post" action="{% url 'core:sindiapp_consolidado_recalcular' %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="periodo" value="{{ c.periodo }}">
+              <button class="btn btn-sm btn-outline-primary" type="submit">Recalcular</button>
+            </form>
+            <form method="post" action="{% url 'core:sindiapp_consolidado_cerrar' %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="periodo" value="{{ c.periodo }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Cerrar</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-secondary">Sin consolidados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

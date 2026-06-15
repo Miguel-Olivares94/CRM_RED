@@ -2,6 +2,15 @@
 {% block title %}SindiApp | Dashboard{% endblock %}
 {% block page_title %}Dashboard sindical{% endblock %}
 {% block content %}
+{% if alertas_criticas_count > 0 %}
+<div class="sindi-card mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-color: var(--sindi-danger); background: var(--sindi-danger-soft);">
+  <div>
+    <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> {{ alertas_criticas_count }} alerta{{ alertas_criticas_count|pluralize }} crítica{{ alertas_criticas_count|pluralize }} pendiente{{ alertas_criticas_count|pluralize }}</span>
+    <span class="ms-2 text-secondary">Revisa el detalle antes de continuar con el proceso del período.</span>
+  </div>
+  <a class="btn btn-danger sindi-cta" href="{% url 'core:sindiapp_alerta_list' %}"><i class="bi bi-bell-fill"></i> Ver alertas</a>
+</div>
+{% endif %}
 <div class="row g-3 mb-3">
   <div class="col-md-6 col-xl-3">
     <div class="sindi-card h-100">
@@ -84,6 +93,7 @@
       <div class="d-grid gap-2">
         <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_movimiento_import' %}"><i class="bi bi-file-earmark-arrow-up"></i> Importar planillas</a>
         <a class="btn btn-outline-primary sindi-cta" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-table"></i> Revisar consolidados</a>
+        <a class="btn btn-outline-danger sindi-cta" href="{% url 'core:sindiapp_alerta_list' %}"><i class="bi bi-bell"></i> Ver alertas activas</a>
       </div>
     </div>
   </div>

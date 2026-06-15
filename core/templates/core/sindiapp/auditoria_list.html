@@ -2,18 +2,21 @@
 {% block title %}SindiApp | Auditoría{% endblock %}
 {% block page_title %}Auditoría{% endblock %}
 {% block content %}
-<div class="sindi-card">
-  <form method="get" class="row g-2 mb-3">
-    <div class="col-sm-4">
-      <input class="form-control" type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="Filtrar periodo YYYY-MM">
+<div class="sindi-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-8">
+      <label class="form-label">Filtrar por período</label>
+      <input class="form-control" type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="YYYY-MM">
     </div>
-    <div class="col-sm-auto">
-      <button class="btn btn-primary" type="submit">Filtrar</button>
+    <div class="col-md-4 d-grid">
+      <button class="btn btn-primary sindi-cta" type="submit">Aplicar filtro</button>
     </div>
   </form>
+</div>
 
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0">
+<div class="sindi-card">
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
       <thead>
         <tr>
           <th>Fecha</th>
@@ -27,8 +30,8 @@
         {% for item in auditorias %}
           <tr>
             <td>{{ item.created_at|date:'Y-m-d H:i' }}</td>
-            <td>{{ item.accion }}</td>
-            <td>{{ item.periodo|default:'-' }}</td>
+            <td><span class="sindi-badge sindi-badge-info">{{ item.accion }}</span></td>
+            <td><span class="sindi-badge sindi-badge-accent">{{ item.periodo|default:'-' }}</span></td>
             <td>{% if item.usuario %}{{ item.usuario.username }}{% else %}Sistema{% endif %}</td>
             <td>{{ item.resumen }}</td>
           </tr>

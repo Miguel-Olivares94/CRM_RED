@@ -1,45 +1,163 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}Consulta por RUT Sindicato{% endblock %}
+{% block page_title %}Consulta por RUT{% endblock %}
 {% block content %}
-<h2>Consulta por RUT</h2>
-<form method="get">
-  <input type="text" name="rut" value="{{ rut_buscado }}" placeholder="12.345.678-9">
-  <button type="submit">Buscar</button>
-</form>
+{% if request.resolver_match.url_name == 'sindiapp_consulta_rut' %}
+  {% url 'core:sindiapp_consulta_rut' as consulta_rut_url %}
+{% else %}
+  {% url 'core:sindicato_consulta_rut' as consulta_rut_url %}
+{% endif %}
+
+<div class="sindi-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-9">
+      <label class="form-label">Buscar socio por RUT</label>
+      <input class="form-control" type="text" name="rut" value="{{ rut_buscado }}" placeholder="12.345.678-9">
+    </div>
+    <div class="col-md-3 d-grid">
+      <button class="btn btn-primary sindi-cta" type="submit">Buscar</button>
+    </div>
+  </form>
+</div>
 
 {% if socio %}
-  <h3>{{ socio.nombre }} ({{ socio.rut }})</h3>
-  <p>Estado laboral: {{ socio.get_estado_laboral_display }}</p>
-  <p>Periodo actual: {{ periodo_actual }}</p>
-  <p>Total periodo: {{ total_periodo }}</p>
-
-  <h4>Montos por beneficio</h4>
-  <ul>
-    {% for item in montos_por_beneficio %}
-      <li>{{ item.tipo_beneficio__nombre }}: {{ item.total }}</li>
-    {% empty %}
-      <li>Sin montos en el periodo actual</li>
-    {% endfor %}
-  </ul>
-
-  <h4>Observaciones</h4>
-  <ul>
-    {% for obs in observaciones %}
-      <li>{{ obs.periodo }} - {{ obs.tipo_beneficio__nombre }} - {{ obs.observacion }} ({{ obs.monto }})</li>
-    {% empty %}
-      <li>Sin observaciones</li>
-    {% endfor %}
-  </ul>
-
-  <h4>Últimos períodos</h4>
-  <ul>
-    {% for p in historial_periodos %}
-      <li>{{ p.periodo }}: {{ p.total }}</li>
-    {% empty %}
-      <li>Sin historial</li>
-    {% endfor %}
-  </ul>
+  <div id="ficha-socio" class="row g-3 mb-3">
+    <div class="col-lg-7">
+      <div class="sindi-card h-100">
+        <h5 class="mb-2">Ficha del socio</h5>
+        <div class="row g-2">
+          <div class="col-md-6"><span class="sindi-card-title">Nombre</span><div class="fw-semibold">{{ socio.nombre }}</div></div>
+          <div class="col-md-6"><span class="sindi-card-title">RUT</span><div class="fw-semibold">{{ socio.rut }}</div></div>
+          <div class="col-md-6"><span class="sindi-card-title">Estado laboral</span><div>{{ socio.get_estado_laboral_display }}</div></div>
+          <div class="col-md-6"><span class="sindi-card-title">Período actual</span><div>{{ periodo_actual }}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="sindi-card h-100">
+        <h5 class="mb-2">Totales</h5>
+        <div class="d-flex flex-column gap-2">
+          <span class="sindi-badge sindi-badge-info">Total período: {{ total_periodo }}</span>
+          <span class="sindi-badge sindi-badge-accent">Beneficios con monto: {{ montos_por_beneficio|length }}</span>
+          <span class="sindi-badge sindi-badge-success">Historial periodos: {{ historial_periodos|length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 {% elif rut_buscado %}
-  <p>No se encontró socio para el RUT indicado.</p>
+  <div class="alert alert-warning">No se encontró socio para el RUT indicado.</div>
 {% endif %}
+
+{% if socio %}
+  <div class="sindi-card mb-3">
+    <h5 class="mb-2">Montos por beneficio</h5>
+    <div class="sindi-table-wrap table-responsive">
+      <table class="table sindi-table align-middle mb-0">
+        <thead><tr><th>Beneficio</th><th>Total</th></tr></thead>
+        <tbody>
+          {% for item in montos_por_beneficio %}
+            <tr><td>{{ item.tipo_beneficio__nombre }}</td><td class="fw-semibold">{{ item.total }}</td></tr>
+          {% empty %}
+            <tr><td colspan="2" class="text-secondary">Sin montos en el período actual.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="sindi-card h-100">
+        <h5 class="mb-2">Historial de períodos</h5>
+        <div class="sindi-table-wrap table-responsive">
+          <table class="table sindi-table align-middle mb-0">
+            <thead><tr><th>Período</th><th>Total</th></tr></thead>
+            <tbody>
+              {% for p in historial_periodos %}
+                <tr><td>{{ p.periodo }}</td><td class="fw-semibold">{{ p.total }}</td></tr>
+              {% empty %}
+                <tr><td colspan="2" class="text-secondary">Sin historial.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="sindi-card h-100">
+        <h5 class="mb-2">Observaciones</h5>
+        <div class="sindi-table-wrap table-responsive">
+          <table class="table sindi-table align-middle mb-0">
+            <thead><tr><th>Período</th><th>Beneficio</th><th>Observación</th></tr></thead>
+            <tbody>
+              {% for obs in observaciones %}
+                <tr><td>{{ obs.periodo }}</td><td>{{ obs.tipo_beneficio__nombre }}</td><td>{{ obs.observacion }}</td></tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-secondary">Sin observaciones.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="sindi-card mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Socios disponibles</h5>
+    <span class="small text-secondary">Selecciona un socio para cargar su ficha automáticamente.</span>
+  </div>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>RUT</th>
+          <th>Site</th>
+          <th>Estado laboral</th>
+          <th>Estado</th>
+          <th class="text-center">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in socios_page_obj %}
+          <tr>
+            <td class="fw-semibold">{{ s.nombre }}</td>
+            <td>{{ s.rut }}</td>
+            <td>{{ s.site|default:'-' }}</td>
+            <td>{{ s.get_estado_laboral_display }}</td>
+            <td>
+              {% if s.estado == 'ACTIVO' %}
+                <span class="sindi-badge sindi-badge-success">{{ s.get_estado_display }}</span>
+              {% else %}
+                <span class="sindi-badge sindi-badge-danger">{{ s.get_estado_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <a class="btn btn-sm btn-outline-primary" href="{{ consulta_rut_url }}?rut={{ s.rut|urlencode }}#ficha-socio">Ver ficha</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-secondary">No hay socios para mostrar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if socios_page_obj.paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <span class="small text-secondary">
+        Página {{ socios_page_obj.number }} de {{ socios_page_obj.paginator.num_pages }}
+      </span>
+      <div class="btn-group btn-group-sm">
+        {% if socios_page_obj.has_previous %}
+          <a class="btn btn-outline-secondary" href="{{ consulta_rut_url }}?page={{ socios_page_obj.previous_page_number }}{% if rut_buscado %}&rut={{ rut_buscado|urlencode }}{% endif %}">Anterior</a>
+        {% endif %}
+        {% if socios_page_obj.has_next %}
+          <a class="btn btn-outline-secondary" href="{{ consulta_rut_url }}?page={{ socios_page_obj.next_page_number }}{% if rut_buscado %}&rut={{ rut_buscado|urlencode }}{% endif %}">Siguiente</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

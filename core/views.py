@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LogoutView as DjangoLogoutView
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum
 from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse_lazy, reverse
@@ -2190,6 +2191,60 @@ class SocioSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin,
             qs = qs.filter(Q(rut__icontains=q) | Q(nombre__icontains=q))
         return qs.order_by('nombre')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        empresa = self.get_empresa_usuario()
+        rut_query = self.request.GET.get('rut', '').strip()
+        rut = _rut_normalizado_simple(rut_query)
+        periodo_actual = datetime.now().strftime('%Y-%m')
+
+        context.update(
+            {
+                'rut_buscado': rut_query,
+                'periodo_actual': periodo_actual,
+                'socio_detalle': None,
+                'total_periodo': 0,
+                'montos_por_beneficio': [],
+                'observaciones': [],
+                'historial_periodos': [],
+            }
+        )
+
+        if not rut:
+            return context
+
+        socios_qs = SocioSindicato.objects.all()
+        if self.request.user.is_superuser and empresa is None:
+            socio = socios_qs.filter(rut=rut).select_related('empresa').first()
+        else:
+            if empresa is None:
+                return context
+            socio = socios_qs.filter(empresa=empresa, rut=rut).select_related('empresa').first()
+
+        if not socio:
+            return context
+
+        movs = MovimientoSindicato.objects.filter(empresa=socio.empresa, socio=socio)
+        movs_periodo = movs.filter(periodo=periodo_actual).exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+
+        context['socio_detalle'] = socio
+        context['total_periodo'] = movs_periodo.aggregate(total=Sum('monto'))['total'] or 0
+        context['montos_por_beneficio'] = list(
+            movs_periodo.values('tipo_beneficio__nombre').annotate(total=Sum('monto')).order_by('tipo_beneficio__nombre')
+        )
+        context['observaciones'] = list(
+            movs_periodo.exclude(observacion__isnull=True).exclude(observacion='').values(
+                'periodo', 'tipo_beneficio__nombre', 'observacion', 'monto'
+            )[:20]
+        )
+        context['historial_periodos'] = list(
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .values('periodo')
+            .annotate(total=Sum('monto'))
+            .order_by('-periodo')[:6]
+        )
+        return context
+
 
 class SocioSindicatoCreateView(SindicatoTenantMixin, SindicatoRolePermissionMixin, CreateView):
     model = SocioSindicato
@@ -2880,6 +2935,18 @@ class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixi
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         empresa = self.get_empresa_usuario()
+        socios_qs = SocioSindicato.objects.select_related('empresa')
+
+        if self.request.user.is_superuser and empresa is None:
+            socios_tabla = socios_qs.order_by('nombre', 'rut')
+        elif empresa is not None:
+            socios_tabla = socios_qs.filter(empresa=empresa).order_by('nombre', 'rut')
+        else:
+            socios_tabla = socios_qs.none()
+
+        paginator = Paginator(socios_tabla, 25)
+        socios_page_obj = paginator.get_page(self.request.GET.get('page'))
+
         rut_query = self.request.GET.get('rut', '').strip()
         rut = _rut_normalizado_simple(rut_query)
         periodo_actual = datetime.now().strftime('%Y-%m')
@@ -2893,6 +2960,8 @@ class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixi
                 'montos_por_beneficio': [],
                 'observaciones': [],
                 'historial_periodos': [],
+                'socios_tabla': socios_tabla,
+                'socios_page_obj': socios_page_obj,
             }
         )
 
@@ -2944,6 +3013,52 @@ class ConsolidadoSindicatoHistorialView(SindicatoTenantMixin, SindicatoRolePermi
         if periodo:
             qs = qs.filter(periodo=periodo)
         return qs.order_by('-periodo', '-updated_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['puede_exportar'] = self._check_permiso('consolidado_editar')
+        return context
+
+
+class ConsolidadoSindicatoExportacionListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = ConsolidadoMensualSindicato
+    template_name = 'core/sindiapp/exportacion_list.html'
+    context_object_name = 'consolidados'
+    permiso_ver = 'consolidado_ver'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(ConsolidadoMensualSindicato.objects.all())
+        periodo = self.request.GET.get('periodo', '').strip()
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+        return qs.order_by('-periodo', '-updated_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        puede_exportar = self._check_permiso('consolidado_editar')
+        consolidados = context.get('consolidados')
+
+        context['puede_exportar'] = puede_exportar
+        context['total_consolidados'] = consolidados.count() if consolidados is not None else 0
+        context['total_exportables'] = (
+            consolidados.exclude(estado=ConsolidadoMensualSindicato.ESTADO_ABIERTO).count()
+            if consolidados is not None
+            else 0
+        )
+        context['total_bloqueados'] = (
+            consolidados.filter(estado=ConsolidadoMensualSindicato.ESTADO_ABIERTO).count()
+            if consolidados is not None
+            else 0
+        )
+
+        context['ultimo_exportable'] = (
+            consolidados.exclude(estado=ConsolidadoMensualSindicato.ESTADO_ABIERTO)
+            .order_by('-periodo', '-updated_at')
+            .first()
+            if consolidados is not None
+            else None
+        )
+        return context
 
 
 class ConsolidadoSindicatoDetalleView(SindicatoTenantMixin, SindicatoRolePermissionMixin, DetailView):
@@ -3142,6 +3257,15 @@ class SindiAppDashboardView(SindicatoTenantMixin, SindicatoRolePermissionMixin, 
                         ]
                     )
                 ).select_related('socio').order_by('-created_at')[:5],
+                'alertas_criticas_count': self.filtrar_por_tenant(
+                    AlertaSindicato.objects.filter(
+                        estado__in=[
+                            AlertaSindicato.ESTADO_PENDIENTE,
+                            AlertaSindicato.ESTADO_EN_REVISION,
+                        ],
+                        prioridad=AlertaSindicato.PRIORIDAD_CRITICA,
+                    )
+                ).count(),
             }
         )
         return context
@@ -3303,6 +3427,10 @@ class SindiAppConsolidadoSindicatoCerrarPeriodoView(ConsolidadoSindicatoCerrarPe
 
 
 class SindiAppConsolidadoSindicatoExportarView(ConsolidadoSindicatoExportarView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppConsolidadoSindicatoExportacionListView(ConsolidadoSindicatoExportacionListView):
     login_url = 'core:sindiapp_login'
 
 

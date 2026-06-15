@@ -1,0 +1,107 @@
+{% extends 'core/sindiapp/base.html' %}
+{% block title %}Exportación Sindicato{% endblock %}
+{% block page_title %}Exportación{% endblock %}
+{% block content %}
+<div class="sindi-card mb-3" style="background: linear-gradient(140deg, #f4fbff 0%, #eef8f2 100%); border-style: dashed;">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h5 class="mb-1"><i class="bi bi-file-earmark-arrow-down"></i> Centro de exportación</h5>
+      <div class="text-secondary small">Descarga planillas por período sin entrar al detalle del consolidado.</div>
+    </div>
+    {% if ultimo_exportable %}
+      <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_consolidado_exportar' ultimo_exportable.id %}">
+        <i class="bi bi-download"></i> Exportar último período ({{ ultimo_exportable.periodo }})
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Períodos listados</div>
+      <div class="sindi-kpi-value">{{ total_consolidados }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Listos para exportar</div>
+      <div class="sindi-kpi-value" style="color: var(--sindi-success);">{{ total_exportables }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Pendientes de cierre</div>
+      <div class="sindi-kpi-value" style="color: var(--sindi-accent);">{{ total_bloqueados }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="sindi-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-7 col-lg-4">
+      <label class="form-label">Buscar período</label>
+      <input class="form-control" type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="2026-08">
+    </div>
+    <div class="col-md-5 col-lg-2 d-grid">
+      <button class="btn btn-outline-primary sindi-cta" type="submit">Aplicar filtro</button>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="small text-secondary">Solo se puede exportar cuando el período está cerrado o previamente exportado.</div>
+    </div>
+  </form>
+</div>
+
+<div class="sindi-card">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Bandeja de descargas</h5>
+    <span class="small text-secondary">Acción rápida por período.</span>
+  </div>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Período</th>
+          <th>Estado</th>
+          <th>Total socios</th>
+          <th>Total monto</th>
+          <th>Fecha generación</th>
+          <th class="text-center">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in consolidados %}
+        <tr>
+          <td class="fw-semibold">{{ c.periodo }}</td>
+          <td>
+            {% if c.estado == 'ABIERTO' %}
+              <span class="sindi-badge sindi-badge-accent">{{ c.get_estado_display }}</span>
+            {% elif c.estado == 'CERRADO' %}
+              <span class="sindi-badge sindi-badge-info">{{ c.get_estado_display }}</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-success">{{ c.get_estado_display }}</span>
+            {% endif %}
+          </td>
+          <td>{{ c.total_socios }}</td>
+          <td class="fw-semibold">{{ c.total_monto }}</td>
+          <td>{{ c.fecha_generacion|default:'-' }}</td>
+          <td class="text-center">
+            {% if c.estado != 'ABIERTO' and puede_exportar %}
+              <a class="btn btn-sm btn-success" href="{% url 'core:sindiapp_consolidado_exportar' c.id %}">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Descargar
+              </a>
+            {% elif c.estado == 'ABIERTO' %}
+              <span class="sindi-badge sindi-badge-accent">Bloqueado</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-danger">Sin permiso</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-secondary">No hay consolidados para exportar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

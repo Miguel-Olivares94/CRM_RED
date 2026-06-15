@@ -1,24 +1,69 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}Movimientos Sindicato{% endblock %}
+{% block page_title %}Movimientos{% endblock %}
 {% block content %}
-<h2>Movimientos Sindicato</h2>
-<form method="get">
-  <input type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="YYYY-MM">
-  <button type="submit">Filtrar</button>
-</form>
-<p>Total: {{ movimientos|length }}</p>
-{% if puede_importar %}
-  <p><a href="{% url 'core:sindiapp_movimiento_import' %}">Importar movimientos (Excel/CSV)</a></p>
-{% endif %}
-<ul>
-  {% for mov in movimientos %}
-    <li>
-      {{ mov.periodo }} - {{ mov.socio.rut }} - {{ mov.tipo_beneficio.nombre }} - {{ mov.monto }}
-      <a href="{% url 'core:sindiapp_movimiento_update' mov.pk %}">Editar</a>
-    </li>
-  {% empty %}
-    <li>Sin movimientos</li>
-  {% endfor %}
-</ul>
-<a href="{% url 'core:sindiapp_movimiento_create' %}">Nuevo movimiento</a>
+<div class="sindi-card mb-3">
+  <div class="sindi-toolbar">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Filtrar por período</label>
+        <input class="form-control" type="text" name="periodo" value="{{ request.GET.periodo }}" placeholder="YYYY-MM">
+      </div>
+      <div class="col-md-4 d-grid">
+        <button class="btn btn-primary sindi-cta" type="submit">Aplicar filtro</button>
+      </div>
+    </form>
+    <div class="d-flex gap-2">
+      {% if puede_importar %}
+      <a class="btn btn-outline-primary sindi-cta" href="{% url 'core:sindiapp_movimiento_import' %}"><i class="bi bi-file-earmark-arrow-up"></i> Importar planillas</a>
+      {% endif %}
+      <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_movimiento_create' %}"><i class="bi bi-plus-circle"></i> Nuevo movimiento</a>
+    </div>
+  </div>
+  {% if puede_importar %}
+  <div class="sindi-subtitle mt-2 mb-0 small">¿Tienes una planilla de un beneficio (Gas, Telefonía, Copeuch, etc.)? Usa <strong>Importar planillas</strong> para cargar varios movimientos a la vez.</div>
+  {% endif %}
+  <div class="sindi-subtitle mt-2 mb-0">Total registros: {{ movimientos|length }}</div>
+</div>
+
+<div class="sindi-card">
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Período</th>
+          <th>RUT</th>
+          <th>Socio</th>
+          <th>Beneficio</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for mov in movimientos %}
+        <tr>
+          <td><span class="sindi-badge sindi-badge-info">{{ mov.periodo }}</span></td>
+          <td class="fw-semibold">{{ mov.socio.rut }}</td>
+          <td>{{ mov.socio.nombre }}</td>
+          <td>{{ mov.tipo_beneficio.nombre }}</td>
+          <td class="fw-semibold">{{ mov.monto }}</td>
+          <td>
+            {% if mov.estado == 'APROBADO' %}
+              <span class="sindi-badge sindi-badge-success">Aprobado</span>
+            {% elif mov.estado == 'RECHAZADO' %}
+              <span class="sindi-badge sindi-badge-danger">Rechazado</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-accent">Pendiente</span>
+            {% endif %}
+          </td>
+          <td><a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_movimiento_update' mov.pk %}">Editar</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-secondary">Sin movimientos para mostrar.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

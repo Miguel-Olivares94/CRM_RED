@@ -6,9 +6,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from core.models import (
+    AlertaSindicato,
     AuditoriaSindicato,
     ConsolidadoMensualSindicato,
     Empresa,
@@ -121,6 +122,30 @@ class SindicatoViewsTests(TestCase):
         resp = self.client.get(reverse('core:sindicato_consulta_rut'), {'rut': '11.111.111-1'})
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.context['socio'])
+
+    def test_consulta_rut_tabla_socios_y_boton_ver_ficha(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindicato_consulta_rut'))
+        self.assertEqual(resp.status_code, 200)
+
+        socios_tabla = list(resp.context['socios_tabla'])
+        self.assertEqual(socios_tabla, [self.socio_a])
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Socios disponibles', contenido)
+        self.assertIn('Ver ficha', contenido)
+        self.assertIn('?rut=12345678-5', contenido)
+        self.assertNotIn('11.111.111-1', contenido)
+
+    def test_socio_list_muestra_ficha_rapida_por_rut(self):
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindicato_socio_list'), {'rut': '12.345.678-5'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['socio_detalle'], self.socio_a)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Ficha rápida del socio', contenido)
+        self.assertIn('Editar perfil', contenido)
 
     def test_permisos_admin_crud_socios_beneficios(self):
         self.client.force_login(self.admin_a)
@@ -237,6 +262,20 @@ class SindicatoImportViewTests(TestCase):
 
     def _csv_file(self, content, name='movimientos.csv'):
         return SimpleUploadedFile(name, content.encode('utf-8'), content_type='text/csv')
+
+    def _xlsx_file(self, rows, name='movimientos.xlsx'):
+        wb = Workbook()
+        ws = wb.active
+        for row in rows:
+            ws.append(row)
+        payload = BytesIO()
+        wb.save(payload)
+        payload.seek(0)
+        return SimpleUploadedFile(
+            name,
+            payload.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
 
     def test_usuario_sin_permiso_recibe_403(self):
         self.client.force_login(self.dirigente_a)
@@ -492,6 +531,37 @@ class SindicatoImportViewTests(TestCase):
         mov = MovimientoSindicato.objects.get(empresa=self.empresa_a, referencia_externa__startswith='COP-')
         self.assertEqual(int(mov.monto), 5100)
         self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_COPEUCH)
+
+    def test_copeuch_excel_detecta_header_despues_de_filas_informativas(self):
+        self.client.force_login(self.tesoreria_a)
+        file_obj = self._xlsx_file(
+            [
+                ('COOPEUCH LTDA.', None, None, None, None, None, None),
+                ('Empleado:', 'SINDICATO DHL', None, None, None, None, None),
+                ('Fecha', 'MAYO/2026', None, None, None, None, None),
+                ('Planilla', '1315105', None, None, None, None, None),
+                (None, None, None, None, None, None, None),
+                ('NRO.', 'RUT', 'NOMBRE', 'FEC. ING. SOCIO', 'ACCIONES', 'PRESTAMOS', 'TOT. DCTOS.'),
+                (1, '12.345.678-5', 'Socio A', '28-10-25', 3680, 0, 3680),
+            ],
+            name='copeuch_con_bloque_informativo.xlsx',
+        )
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_copeuch_a.id, 'periodo': '2026-08', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Válidas: 1')
+        self.assertContains(preview, 'Rechazadas: 0')
+
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, 'Movimientos creados: 1')
+
+        mov = MovimientoSindicato.objects.get(empresa=self.empresa_a, periodo='2026-08')
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_COPEUCH)
+        self.assertEqual(int(mov.monto), 3680)
 
     def test_gas_y_telefonia_siguen_detectandose_correctamente(self):
         self.client.force_login(self.tesoreria_a)
@@ -806,6 +876,144 @@ class SindicatoConsolidadoViewsTests(TestCase):
 
         second = self.client.get(reverse('core:sindicato_consolidado_exportar', kwargs={'pk': cons.pk}))
         self.assertEqual(second.status_code, 200)
+
+
+class SindiAppNavegacionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa_a = Empresa.objects.create(nombre='Empresa Nav', tipo='CLIENTE')
+
+        cls.grp_admin = Group.objects.create(name='Administracion')
+        cls.grp_tesoreria = Group.objects.create(name='Tesoreria')
+        cls.grp_dirigente = Group.objects.create(name='Dirigente')
+
+        cls.admin_a = User.objects.create_user(username='admin_nav', email='admin_nav@test.cl', password='x')
+        cls.admin_a.groups.add(cls.grp_admin)
+        UserProfile.objects.create(user=cls.admin_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.tesoreria_a = User.objects.create_user(username='tes_nav', email='tes_nav@test.cl', password='x')
+        cls.tesoreria_a.groups.add(cls.grp_tesoreria)
+        UserProfile.objects.create(user=cls.tesoreria_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.socio_a = SocioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            rut='12345678-5',
+            nombre='Socio Nav',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+            orden_export=1,
+        )
+
+    def test_sidebar_no_tiene_items_duplicados_ni_importar_ni_exportacion(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        contenido = resp.content.decode('utf-8')
+
+        self.assertEqual(contenido.count('<li class="nav-item">'), 8)
+        self.assertNotIn('Importar planillas</a></li>', contenido)
+        self.assertNotIn('Exportación</a></li>', contenido)
+
+    def test_rutas_importar_y_exportacion_siguen_funcionando_sin_estar_en_sidebar(self):
+        self.client.force_login(self.tesoreria_a)
+        resp_importar = self.client.get(reverse('core:sindiapp_movimiento_import'))
+        resp_exportacion = self.client.get(reverse('core:sindiapp_exportacion_list'))
+        self.assertEqual(resp_importar.status_code, 200)
+        self.assertEqual(resp_exportacion.status_code, 200)
+
+    def test_dashboard_movimientos_consolidados_alertas_navegables(self):
+        self.client.force_login(self.tesoreria_a)
+        for url_name in (
+            'sindiapp_dashboard',
+            'sindiapp_movimiento_list',
+            'sindiapp_consolidado_historial',
+            'sindiapp_alerta_list',
+        ):
+            resp = self.client.get(reverse(f'core:{url_name}'))
+            self.assertEqual(resp.status_code, 200, url_name)
+
+    def test_movimientos_muestra_boton_importar_planillas(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_movimiento_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Importar planillas')
+        self.assertContains(resp, reverse('core:sindiapp_movimiento_import'))
+
+    def test_dashboard_sin_alertas_criticas_no_muestra_cta(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['alertas_criticas_count'], 0)
+        self.assertNotContains(resp, 'alerta crítica pendiente')
+        self.assertNotContains(resp, 'alertas críticas pendientes')
+
+    def test_dashboard_muestra_cta_cuando_hay_alerta_critica(self):
+        AlertaSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_alerta='TEST',
+            categoria=AlertaSindicato.CATEGORIA_DATOS,
+            prioridad=AlertaSindicato.PRIORIDAD_CRITICA,
+            titulo='Alerta crítica de prueba',
+            estado=AlertaSindicato.ESTADO_PENDIENTE,
+            clave_unica='ALERTA-CRITICA-NAV-1',
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['alertas_criticas_count'], 1)
+        self.assertContains(resp, 'alerta crítica pendiente')
+        self.assertContains(resp, reverse('core:sindiapp_alerta_list'))
+
+    def test_consolidado_historial_muestra_boton_exportar_para_periodo_cerrado(self):
+        cons = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo='2026-09',
+            estado=ConsolidadoMensualSindicato.ESTADO_CERRADO,
+            total_socios=1,
+            total_monto=1000,
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_consolidado_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Exportar')
+        self.assertContains(resp, reverse('core:sindiapp_consolidado_exportar', kwargs={'pk': cons.pk}))
+
+    def test_consolidado_historial_no_muestra_exportar_para_periodo_abierto(self):
+        ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo='2026-10',
+            estado=ConsolidadoMensualSindicato.ESTADO_ABIERTO,
+            total_socios=1,
+            total_monto=1000,
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_consolidado_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, '>Exportar<')
+
+    def test_consolidado_historial_dirigente_no_ve_boton_exportar(self):
+        cons = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo='2026-11',
+            estado=ConsolidadoMensualSindicato.ESTADO_CERRADO,
+            total_socios=1,
+            total_monto=1000,
+        )
+        dirigente_a = User.objects.create_user(username='dir_nav', email='dir_nav@test.cl', password='x')
+        dirigente_a.groups.add(self.grp_dirigente)
+        UserProfile.objects.create(user=dirigente_a, empresa=self.empresa_a, role='ADMIN')
+
+        self.client.force_login(dirigente_a)
+        resp = self.client.get(reverse('core:sindiapp_consolidado_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, reverse('core:sindiapp_consolidado_exportar', kwargs={'pk': cons.pk}))
 
 
 class SindicatoConsolidadoE2EFlowTests(TestCase):

@@ -1,55 +1,72 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}Detalle Consolidado{% endblock %}
+{% block page_title %}Detalle de consolidado{% endblock %}
 {% block content %}
-<h2>Detalle Consolidado {{ consolidado.periodo }}</h2>
+<div class="sindi-card mb-3">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h4 class="mb-1">Consolidado {{ consolidado.periodo }}</h4>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if consolidado.estado == 'ABIERTO' %}
+          <span class="sindi-badge sindi-badge-accent">{{ consolidado.get_estado_display }}</span>
+        {% else %}
+          <span class="sindi-badge sindi-badge-success">{{ consolidado.get_estado_display }}</span>
+        {% endif %}
+        <span class="sindi-badge sindi-badge-info">Socios: {{ consolidado.total_socios }}</span>
+        <span class="sindi-badge sindi-badge-info">Monto: {{ consolidado.total_monto }}</span>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary sindi-cta" href="{% url 'core:sindiapp_consolidado_historial' %}">Volver</a>
+      {% if puede_editar_consolidado and consolidado.estado != 'ABIERTO' %}
+      <a class="btn btn-warning sindi-cta" href="{% url 'core:sindiapp_consolidado_exportar' consolidado.id %}"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel</a>
+      {% endif %}
+    </div>
+  </div>
 
-<p><strong>Estado:</strong> {{ consolidado.get_estado_display }}</p>
-<p><strong>Total socios:</strong> {{ consolidado.total_socios }}</p>
-<p><strong>Total monto:</strong> {{ consolidado.total_monto }}</p>
+  {% if puede_editar_consolidado and consolidado.estado == 'ABIERTO' %}
+  <div class="d-flex gap-2 mt-3">
+    <form method="post" action="{% url 'core:sindiapp_consolidado_recalcular' %}">
+      {% csrf_token %}
+      <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
+      <button class="btn btn-outline-primary sindi-cta" type="submit">Recalcular</button>
+    </form>
+    <form method="post" action="{% url 'core:sindiapp_consolidado_cerrar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
+      <button class="btn btn-outline-danger sindi-cta" type="submit">Cerrar período</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
 
-<p>
-  <a href="{% url 'core:sindiapp_consolidado_historial' %}">Volver al historial</a>
-</p>
-
-{% if puede_editar_consolidado and consolidado.estado == 'ABIERTO' %}
-<form method="post" action="{% url 'core:sindiapp_consolidado_recalcular' %}" style="display:inline;">
-  {% csrf_token %}
-  <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
-  <button type="submit">Recalcular</button>
-</form>
-<form method="post" action="{% url 'core:sindiapp_consolidado_cerrar' %}" style="display:inline;">
-  {% csrf_token %}
-  <input type="hidden" name="periodo" value="{{ consolidado.periodo }}">
-  <button type="submit">Cerrar periodo</button>
-</form>
-{% endif %}
-
-{% if puede_editar_consolidado and consolidado.estado != 'ABIERTO' %}
-<a href="{% url 'core:sindiapp_consolidado_exportar' consolidado.id %}">Exportar Excel</a>
-{% endif %}
-
-<table border="1" cellpadding="6" cellspacing="0" style="margin-top:12px;">
-  <thead>
-    <tr>
-      <th>Socio</th>
-      <th>RUT</th>
-      <th>Beneficio</th>
-      <th>Monto aprobado</th>
-      <th>Motivo ajuste</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for d in detalles %}
-    <tr>
-      <td>{{ d.socio.nombre }}</td>
-      <td>{{ d.socio.rut }}</td>
-      <td>{{ d.tipo_beneficio.nombre }}</td>
-      <td>{{ d.monto_aprobado }}</td>
-      <td>{{ d.motivo_ajuste|default:"-" }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5">Sin detalles para este período</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="sindi-card">
+  <h5 class="mb-2">Detalle de montos</h5>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Socio</th>
+          <th>RUT</th>
+          <th>Beneficio</th>
+          <th>Monto aprobado</th>
+          <th>Motivo ajuste</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in detalles %}
+        <tr>
+          <td>{{ d.socio.nombre }}</td>
+          <td>{{ d.socio.rut }}</td>
+          <td>{{ d.tipo_beneficio.nombre }}</td>
+          <td class="fw-semibold">{{ d.monto_aprobado }}</td>
+          <td>{{ d.motivo_ajuste|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-secondary">Sin detalles para este período.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
