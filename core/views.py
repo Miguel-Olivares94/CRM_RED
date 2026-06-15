@@ -46,7 +46,7 @@ from .services.sindicato_consolidado import (
     recalcular_consolidado_abierto,
 )
 from .services.sindicato_exportacion import ConsolidadoExportacionError, exportar_consolidado_excel
-from .services.sindicato_fuentes import parsear_filas_por_fuente
+from .services.sindicato_fuentes import normalizar_header as normalizar_header_fuente, parsear_filas_por_fuente
 from .services.sindicato_prevalidacion import prevalidar_movimientos_para_consolidado
 
 
@@ -2353,16 +2353,7 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
     session_meta_key = 'sindicato_import_meta'
 
     def _normalizar_header(self, text):
-        value = (str(text or '').strip().lower())
-        value = (
-            value.replace('á', 'a')
-            .replace('é', 'e')
-            .replace('í', 'i')
-            .replace('ó', 'o')
-            .replace('ú', 'u')
-            .replace('ñ', 'n')
-        )
-        return value.replace(' ', '_').replace('-', '_')
+        return normalizar_header_fuente(text)
 
     def _resolver_valor(self, row, aliases):
         for key in aliases:

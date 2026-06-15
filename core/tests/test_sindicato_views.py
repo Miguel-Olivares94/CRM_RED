@@ -216,6 +216,18 @@ class SindicatoImportViewTests(TestCase):
             nombre='Gas',
             estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
         )
+        cls.benef_tel_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='TEL',
+            nombre='Telefonia',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_copeuch_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='COPA',
+            nombre='Copeuch Activo',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
         cls.benef_inactivo_a = TipoBeneficioSindicato.objects.create(
             empresa=cls.empresa_a,
             codigo='COP',
@@ -415,6 +427,95 @@ class SindicatoImportViewTests(TestCase):
         self.assertEqual(mov.metadata_fuente.get('source_row'), 2)
         self.assertEqual(mov.metadata_fuente.get('imported_by'), self.tesoreria_a.username)
         self.assertEqual(mov.metadata_fuente.get('source_columns', {}).get('monto'), '10000')
+
+    def _importar_y_confirmar(self, *, content, beneficio_id, periodo='2026-06', name='import.csv'):
+        file_obj = self._csv_file(content, name=name)
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': beneficio_id, 'periodo': periodo, 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        confirm = self.client.post(reverse('core:sindicato_movimiento_import'), data={'action': 'confirmar'})
+        self.assertEqual(confirm.status_code, 200)
+        return preview, confirm
+
+    def test_copeuch_tot_dctos_con_puntos_crea_monto_correcto(self):
+        self.client.force_login(self.tesoreria_a)
+        content = (
+            'RUT,NOMBRE,FEC. ING. SOCIO,ACCIONES,PRESTAMOS,TOT. DCTOS.\n'
+            '12.345.678-5,Socio A,2020-01-01,0,0,3.680\n'
+        )
+
+        _preview, confirm = self._importar_y_confirmar(
+            content=content,
+            beneficio_id=self.benef_copeuch_a.id,
+            name='copeuch_tot_dctos_puntos.csv',
+        )
+        self.assertContains(confirm, 'Movimientos creados: 1')
+
+        mov = MovimientoSindicato.objects.get(empresa=self.empresa_a, referencia_externa__startswith='COP-')
+        self.assertEqual(int(mov.monto), 3680)
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_COPEUCH)
+
+    def test_copeuch_total_descuentos_crea_monto_correcto(self):
+        self.client.force_login(self.tesoreria_a)
+        content = (
+            'RUT,NOMBRE,Total Descuentos\n'
+            '12.345.678-5,Socio A,4200\n'
+        )
+
+        _preview, confirm = self._importar_y_confirmar(
+            content=content,
+            beneficio_id=self.benef_copeuch_a.id,
+            name='copeuch_total_descuentos.csv',
+        )
+        self.assertContains(confirm, 'Movimientos creados: 1')
+
+        mov = MovimientoSindicato.objects.get(empresa=self.empresa_a, referencia_externa__startswith='COP-')
+        self.assertEqual(int(mov.monto), 4200)
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_COPEUCH)
+
+    def test_copeuch_headers_con_acentos_puntos_y_espacios_crea_monto_correcto(self):
+        self.client.force_login(self.tesoreria_a)
+        content = (
+            ' RUT , NOMBRE , FEC. ING. SOCIO , ACCIONES , PRÉSTAMOS , Total  Dctos  \n'
+            '12.345.678-5,Socio A,2020-01-01,0,0,5100\n'
+        )
+
+        _preview, confirm = self._importar_y_confirmar(
+            content=content,
+            beneficio_id=self.benef_copeuch_a.id,
+            name='copeuch_headers_ruidosos.csv',
+        )
+        self.assertContains(confirm, 'Movimientos creados: 1')
+
+        mov = MovimientoSindicato.objects.get(empresa=self.empresa_a, referencia_externa__startswith='COP-')
+        self.assertEqual(int(mov.monto), 5100)
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_COPEUCH)
+
+    def test_gas_y_telefonia_siguen_detectandose_correctamente(self):
+        self.client.force_login(self.tesoreria_a)
+        gas = (
+            'RUT,NOMBRE APELLIDO,SITE,VALE DE GAS,MONTO\n'
+            '12.345.678-5,Socio A,Site A,15 KG,10000\n'
+        )
+        tel = (
+            'RUT,Razon social,Cuenta,PCS,Cargo Fijo,Fecha de entrega\n'
+            '12.345.678-5,Socio A,C1,1,7000,2026-06-01\n'
+        )
+
+        _pg, cg = self._importar_y_confirmar(content=gas, beneficio_id=self.benef_a.id, name='gas_ok.csv')
+        self.assertContains(cg, 'Movimientos creados: 1')
+        gas_mov = MovimientoSindicato.objects.filter(
+            empresa=self.empresa_a,
+            fuente=MovimientoSindicato.FUENTE_GAS,
+        ).latest('id')
+        self.assertEqual(gas_mov.fuente, MovimientoSindicato.FUENTE_GAS)
+
+        _pt, ct = self._importar_y_confirmar(content=tel, beneficio_id=self.benef_tel_a.id, name='tel_ok.csv')
+        self.assertContains(ct, 'Movimientos creados: 1')
+        tel_mov = MovimientoSindicato.objects.filter(empresa=self.empresa_a, fuente=MovimientoSindicato.FUENTE_TELEFONIA).latest('id')
+        self.assertEqual(int(tel_mov.monto), 7000)
 
 
 class SindicatoConsolidadoViewsTests(TestCase):

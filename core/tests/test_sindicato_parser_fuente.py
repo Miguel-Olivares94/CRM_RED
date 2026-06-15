@@ -6,11 +6,25 @@ from core.services.sindicato_fuentes import (
     FUENTE_GENERICA,
     FUENTE_TELEFONIA,
     detectar_fuente,
+    normalizar_header,
     parsear_filas_por_fuente,
 )
 
 
 class SindicatoParserFuenteTests(SimpleTestCase):
+    def test_normalizar_header_variantes_copeuch_total_descuentos(self):
+        variantes = [
+            'TOT. DCTOS.',
+            'Total Descuentos',
+            'TOTAL DCTOS',
+            'Tot Dctos',
+            '  Tót.   Dctos  ',
+        ]
+        normalizados = {normalizar_header(v) for v in variantes}
+        self.assertIn('tot_dctos', normalizados)
+        self.assertIn('total_descuentos', normalizados)
+        self.assertIn('total_dctos', normalizados)
+
     def test_detecta_fuente_gas_por_headers(self):
         headers = {"rut", "nombre_apellido", "site", "vale_de_gas", "monto"}
         self.assertEqual(detectar_fuente(headers), FUENTE_GAS)
@@ -21,6 +35,14 @@ class SindicatoParserFuenteTests(SimpleTestCase):
 
     def test_detecta_fuente_copeuch_por_headers(self):
         headers = {"rut", "nombre", "fec_ing_socio", "acciones", "prestamos", "tot_dctos"}
+        self.assertEqual(detectar_fuente(headers), FUENTE_COPEUCH)
+
+    def test_detecta_fuente_copeuch_por_header_total_descuentos(self):
+        headers = {"RUT", "NOMBRE", "Total Descuentos"}
+        self.assertEqual(detectar_fuente(headers), FUENTE_COPEUCH)
+
+    def test_detecta_fuente_copeuch_por_header_total_dctos(self):
+        headers = {"RUT", "NOMBRE", "TOTAL DCTOS"}
         self.assertEqual(detectar_fuente(headers), FUENTE_COPEUCH)
 
     def test_detecta_fuente_generica_si_no_calza(self):
@@ -89,3 +111,17 @@ class SindicatoParserFuenteTests(SimpleTestCase):
         self.assertIn("Acciones: $3.680", result[0].observacion)
         self.assertIn("Prestamos: $0", result[0].observacion)
         self.assertEqual(result[0].referencia_externa, "COP-ghi789-4")
+
+    def test_mapea_copeuch_con_alias_total_dctos(self):
+        filas = [
+            {
+                "_fila": 5,
+                "rut": "15.536.420-3",
+                "nombre": "Socio Cop",
+                "total_dctos": "4200",
+            }
+        ]
+
+        fuente, result = parsear_filas_por_fuente(filas, "jkl012")
+        self.assertEqual(fuente, FUENTE_COPEUCH)
+        self.assertEqual(result[0].monto_raw, "4200")

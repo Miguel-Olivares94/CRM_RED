@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
+import unicodedata
 
 
 FUENTE_GAS = "GAS"
@@ -11,15 +13,12 @@ FUENTE_GENERICA = "GENERICA"
 
 def normalizar_header(text: str | None) -> str:
     value = (str(text or "").strip().lower())
-    value = (
-        value.replace("á", "a")
-        .replace("é", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ú", "u")
-        .replace("ñ", "n")
-    )
-    return value.replace(" ", "_").replace("-", "_").replace(".", "")
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    # Normaliza separadores y puntuación a un único patrón de guion bajo.
+    value = re.sub(r"[^a-z0-9]+", "_", value)
+    value = re.sub(r"_+", "_", value).strip("_")
+    return value
 
 
 def _resolver_valor(row: dict, aliases: list[str]) -> str:
@@ -44,7 +43,11 @@ def detectar_fuente(headers: set[str]) -> str:
         return FUENTE_TELEFONIA
 
     if "rut" in headers_norm and (
-        "tot_dctos" in headers_norm or "total_descuentos" in headers_norm
+        "tot_dctos" in headers_norm
+        or "total_descuentos" in headers_norm
+        or "total_dctos" in headers_norm
+        or "tot_dcto" in headers_norm
+        or "total_dcto" in headers_norm
     ) and "nombre" in headers_norm:
         return FUENTE_COPEUCH
 
@@ -127,7 +130,18 @@ def _mapear_fila(row: dict, source: str, source_tag: str) -> FilaFuente:
     elif source == FUENTE_COPEUCH:
         rut_raw = _resolver_valor(row, ["rut"])
         nombre = _resolver_valor(row, ["nombre", "razon_social", "socio", "nombre_socio"])
-        monto_raw = _resolver_valor(row, ["tot_dctos", "total_descuentos", "monto", "valor"])
+        monto_raw = _resolver_valor(
+            row,
+            [
+                "tot_dctos",
+                "total_descuentos",
+                "total_dctos",
+                "tot_dcto",
+                "total_dcto",
+                "monto",
+                "valor",
+            ],
+        )
         observacion = _resolver_valor(row, ["observacion", "observaciones"])
         referencia = _resolver_valor(row, ["referencia_externa", "referencia", "folio"])
         extras = []
