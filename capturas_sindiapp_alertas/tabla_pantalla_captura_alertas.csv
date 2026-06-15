@@ -1,0 +1,11 @@
+pantalla,archivo_captura,ruta
+dashboard_resumen_alertas,01_dashboard_resumen_alertas.png,/sindiapp/dashboard/
+alertas_generadas,02_alertas_listado_generadas.png,/sindiapp/alertas/
+filtros_categoria_prioridad_estado,03_alertas_filtros_categoria_prioridad_estado.png,/sindiapp/alertas/?estado=PENDIENTE&categoria=TELEFONIA&prioridad=ALTA
+alerta_telefonia_preventiva,04_alerta_telefonia_preventiva.png,/sindiapp/alertas/?categoria=TELEFONIA&prioridad=MEDIA
+alerta_telefonia_renovacion,05_alerta_telefonia_renovacion.png,/sindiapp/alertas/?categoria=TELEFONIA&prioridad=ALTA
+alerta_telefonia_vencida,06_alerta_telefonia_vencida.png,/sindiapp/alertas/?categoria=TELEFONIA&prioridad=CRITICA
+alerta_operativa,07_alerta_operativa.png,/sindiapp/alertas/?categoria=IMPORTACION
+accion_en_revision,08_accion_en_revision.png,/sindiapp/alertas/?estado=PENDIENTE&categoria=TELEFONIA&prioridad=MEDIA
+accion_resolver,09_accion_resolver.png,/sindiapp/alertas/?estado=PENDIENTE&categoria=TELEFONIA&prioridad=ALTA
+accion_descartar,10_accion_descartar.png,/sindiapp/alertas/?estado=PENDIENTE&categoria=IMPORTACION

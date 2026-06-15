@@ -843,6 +843,116 @@ class AuditoriaSindicato(BaseModel):
         return f"{self.accion} | {self.entidad} | {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class AlertaSindicato(BaseModel):
+    """Alertas operativas del módulo sindical (Etapa 1)."""
+
+    ESTADO_PENDIENTE = 'PENDIENTE'
+    ESTADO_EN_REVISION = 'EN_REVISION'
+    ESTADO_RESUELTA = 'RESUELTA'
+    ESTADO_DESCARTADA = 'DESCARTADA'
+    ESTADO_CHOICES = [
+        (ESTADO_PENDIENTE, 'Pendiente'),
+        (ESTADO_EN_REVISION, 'En revisión'),
+        (ESTADO_RESUELTA, 'Resuelta'),
+        (ESTADO_DESCARTADA, 'Descartada'),
+    ]
+
+    PRIORIDAD_BAJA = 'BAJA'
+    PRIORIDAD_MEDIA = 'MEDIA'
+    PRIORIDAD_ALTA = 'ALTA'
+    PRIORIDAD_CRITICA = 'CRITICA'
+    PRIORIDAD_CHOICES = [
+        (PRIORIDAD_BAJA, 'Baja'),
+        (PRIORIDAD_MEDIA, 'Media'),
+        (PRIORIDAD_ALTA, 'Alta'),
+        (PRIORIDAD_CRITICA, 'Crítica'),
+    ]
+
+    CATEGORIA_TELEFONIA = 'TELEFONIA'
+    CATEGORIA_IMPORTACION = 'IMPORTACION'
+    CATEGORIA_CONSOLIDADO = 'CONSOLIDADO'
+    CATEGORIA_MOVIMIENTO = 'MOVIMIENTO'
+    CATEGORIA_DATOS = 'DATOS'
+    CATEGORIA_CHOICES = [
+        (CATEGORIA_TELEFONIA, 'Telefonía'),
+        (CATEGORIA_IMPORTACION, 'Importación'),
+        (CATEGORIA_CONSOLIDADO, 'Consolidado'),
+        (CATEGORIA_MOVIMIENTO, 'Movimiento'),
+        (CATEGORIA_DATOS, 'Datos'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='alertas_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    socio = models.ForeignKey(
+        'SocioSindicato',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alertas_sindicato',
+        verbose_name='Socio',
+    )
+    movimiento = models.ForeignKey(
+        'MovimientoSindicato',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alertas_sindicato',
+        verbose_name='Movimiento',
+    )
+    tipo_alerta = models.CharField(max_length=60, verbose_name='Tipo alerta')
+    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, verbose_name='Categoría')
+    prioridad = models.CharField(
+        max_length=10,
+        choices=PRIORIDAD_CHOICES,
+        default=PRIORIDAD_MEDIA,
+        verbose_name='Prioridad',
+    )
+    titulo = models.CharField(max_length=180, verbose_name='Título')
+    descripcion = models.TextField(blank=True, default='', verbose_name='Descripción')
+    periodo = models.CharField(max_length=7, blank=True, null=True, verbose_name='Período')
+    fecha_referencia = models.DateField(blank=True, null=True, verbose_name='Fecha referencia')
+    fecha_alerta = models.DateTimeField(blank=True, null=True, verbose_name='Fecha alerta')
+    estado = models.CharField(
+        max_length=15,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_PENDIENTE,
+        verbose_name='Estado',
+    )
+    payload = models.JSONField(default=dict, blank=True, verbose_name='Payload')
+    clave_unica = models.CharField(max_length=120, verbose_name='Clave única')
+    resuelta_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alertas_sindicato_resueltas',
+        verbose_name='Resuelta por',
+    )
+    fecha_resolucion = models.DateTimeField(blank=True, null=True, verbose_name='Fecha resolución')
+
+    class Meta:
+        verbose_name = 'Alerta Sindicato'
+        verbose_name_plural = 'Alertas Sindicato'
+        ordering = ['-prioridad', '-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'clave_unica'], name='uniq_alerta_sind_empresa_clave'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'categoria']),
+            models.Index(fields=['empresa', 'prioridad']),
+            models.Index(fields=['empresa', 'periodo']),
+            models.Index(fields=['empresa', 'fecha_referencia']),
+        ]
+
+    def __str__(self):
+        return f"{self.titulo} ({self.empresa})"
+
+
 class ConsolidadoMensualSindicato(BaseModel):
     """Preparación conceptual para sprint siguiente: cabecera de consolidado mensual."""
 

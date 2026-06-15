@@ -9,14 +9,21 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
     :root {
-      --sindi-bg: #f3f7f4;
+      --sindi-bg: #f5f8f6;
       --sindi-panel: #ffffff;
-      --sindi-primary: #155e63;
-      --sindi-primary-strong: #0e3e41;
-      --sindi-accent: #ffb703;
-      --sindi-text: #1f2937;
+      --sindi-primary: #0f5b63;
+      --sindi-primary-strong: #083c44;
+      --sindi-accent: #ff9f1c;
+      --sindi-accent-soft: #fff2df;
+      --sindi-text: #1d2d35;
       --sindi-muted: #6b7280;
-      --sindi-border: #dfe7e3;
+      --sindi-border: #dde8e3;
+      --sindi-success-soft: #e9f8ef;
+      --sindi-success: #1f8a4c;
+      --sindi-danger-soft: #fdeeee;
+      --sindi-danger: #c23b3b;
+      --sindi-info-soft: #e9f3ff;
+      --sindi-info: #1e63c8;
     }
 
     body {
@@ -24,7 +31,7 @@
                   radial-gradient(circle at 80% 90%, #eef6fb 0, transparent 30%),
                   var(--sindi-bg);
       color: var(--sindi-text);
-      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      font-family: "Trebuchet MS", "Segoe UI", "Noto Sans", sans-serif;
       min-height: 100vh;
     }
 
@@ -37,8 +44,11 @@
     .sindi-sidebar {
       background: linear-gradient(180deg, var(--sindi-primary-strong), var(--sindi-primary));
       color: #fff;
-      padding: 18px 14px;
+      padding: 16px 12px;
       border-right: 1px solid rgba(255, 255, 255, 0.15);
+      position: sticky;
+      top: 0;
+      height: 100vh;
     }
 
     .sindi-brand {
@@ -48,7 +58,7 @@
       color: #fff;
       text-decoration: none;
       font-weight: 700;
-      margin: 6px 8px 18px;
+      margin: 4px 8px 14px;
     }
 
     .sindi-brand .mark {
@@ -63,11 +73,12 @@
     .sindi-nav .nav-link {
       color: rgba(255, 255, 255, 0.92);
       border-radius: 10px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
       gap: 9px;
       padding: 9px 12px;
+      font-size: 14px;
     }
 
     .sindi-nav .nav-link.active,
@@ -85,22 +96,156 @@
     .sindi-topbar {
       background: var(--sindi-panel);
       border-bottom: 1px solid var(--sindi-border);
-      padding: 10px 18px;
+      padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .sindi-content {
-      padding: 18px;
+      padding: 20px;
     }
 
     .sindi-card {
       background: var(--sindi-panel);
       border: 1px solid var(--sindi-border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 12px 28px rgba(9, 43, 45, 0.07);
+    }
+
+    .sindi-card-title {
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--sindi-muted);
+      margin-bottom: 4px;
+    }
+
+    .sindi-kpi-value {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 700;
+    }
+
+    .sindi-table-wrap {
+      border: 1px solid var(--sindi-border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .sindi-table {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .sindi-table thead th {
+      background: #f0f6f2;
+      color: #38505a;
+      border-bottom: 1px solid var(--sindi-border);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .sindi-table td {
+      vertical-align: middle;
+      border-color: #edf2ef;
+    }
+
+    .sindi-table tbody tr:hover {
+      background: #f8fbf9;
+    }
+
+    .sindi-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .sindi-badge-success {
+      color: var(--sindi-success);
+      background: var(--sindi-success-soft);
+    }
+
+    .sindi-badge-danger {
+      color: var(--sindi-danger);
+      background: var(--sindi-danger-soft);
+    }
+
+    .sindi-badge-info {
+      color: var(--sindi-info);
+      background: var(--sindi-info-soft);
+    }
+
+    .sindi-badge-accent {
+      color: #7a4c00;
+      background: var(--sindi-accent-soft);
+    }
+
+    .sindi-stepper {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .sindi-step {
+      border: 1px solid var(--sindi-border);
       border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 8px 20px rgba(5, 36, 38, 0.05);
+      padding: 10px;
+      background: #fff;
+      font-size: 13px;
+      color: var(--sindi-muted);
+      text-align: center;
+    }
+
+    .sindi-step.active {
+      border-color: #8ec4b5;
+      background: #eff9f4;
+      color: #165a45;
+      font-weight: 700;
+    }
+
+    .sindi-form-grid .form-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #35505b;
+    }
+
+    .sindi-form-grid .form-control,
+    .sindi-form-grid .form-select {
+      border-radius: 10px;
+      border-color: #cedcd5;
+      min-height: 42px;
+    }
+
+    .sindi-cta {
+      border-radius: 12px;
+      font-weight: 700;
+      padding: 10px 14px;
+    }
+
+    .sindi-subtitle {
+      color: var(--sindi-muted);
+      margin-bottom: 12px;
+    }
+
+    .sindi-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: end;
     }
 
     @media (max-width: 992px) {
@@ -109,8 +254,18 @@
       }
 
       .sindi-sidebar {
+        position: static;
+        height: auto;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .sindi-content {
+        padding: 14px;
+      }
+
+      .sindi-stepper {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
       }
     }
   </style>
@@ -132,6 +287,7 @@
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_movimiento_import' %}active{% endif %}" href="{% url 'core:sindiapp_movimiento_import' %}"><i class="bi bi-file-earmark-arrow-up"></i> Importar planillas</a></li>
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_consulta_rut' %}active{% endif %}" href="{% url 'core:sindiapp_consulta_rut' %}"><i class="bi bi-search"></i> Consulta por RUT</a></li>
         <li class="nav-item"><a class="nav-link {% if 'sindiapp_consolidado' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-table"></i> Consolidados</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_alerta' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_alerta_list' %}"><i class="bi bi-bell"></i> Alertas</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-download"></i> Exportación</a></li>
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_auditoria_list' %}active{% endif %}" href="{% url 'core:sindiapp_auditoria_list' %}"><i class="bi bi-clipboard-data"></i> Auditoría</a></li>
       </ul>
@@ -163,6 +319,20 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.querySelectorAll('form input, form select, form textarea').forEach((el) => {
+      if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'hidden' || el.type === 'file') {
+        return;
+      }
+      if (!el.classList.contains('form-control') && !el.classList.contains('form-select')) {
+        if (el.tagName === 'SELECT') {
+          el.classList.add('form-select');
+        } else {
+          el.classList.add('form-control');
+        }
+      }
+    });
+  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -29,7 +29,7 @@ from .models import (
     MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
     Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
     ConsolidadoMensualSindicato, ConsolidadoDetalleSindicato,
-    AuditoriaSindicato,
+    AuditoriaSindicato, AlertaSindicato,
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -47,6 +47,12 @@ from .services.sindicato_consolidado import (
 )
 from .services.sindicato_exportacion import ConsolidadoExportacionError, exportar_consolidado_excel
 from .services.sindicato_fuentes import normalizar_header as normalizar_header_fuente, parsear_filas_por_fuente
+from .services.sindicato_alertas import (
+    descartar_alerta,
+    generar_alertas_sindicato,
+    marcar_alerta_en_revision,
+    resolver_alerta,
+)
 from .services.sindicato_prevalidacion import prevalidar_movimientos_para_consolidado
 
 
@@ -2156,6 +2162,10 @@ class SindicatoRolePermissionMixin:
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
         if permiso == 'consulta_rut':
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'alertas_ver':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'alertas_editar':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
         return False
 
     def dispatch(self, request, *args, **kwargs):
@@ -2362,6 +2372,43 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                 return str(val).strip()
         return ''
 
+    def _es_fila_header_import(self, headers_norm):
+        headers = {h for h in (headers_norm or []) if h}
+        if not headers:
+            return False
+
+        has_rut = 'rut' in headers
+        has_nombre = bool({'nombre', 'nombre_apellido', 'razon_social'} & headers)
+        has_monto = bool(
+            {
+                'monto',
+                'valor',
+                'cargo_fijo',
+                'tot_dctos',
+                'total_descuentos',
+                'total_dctos',
+                'tot_dcto',
+                'total_dcto',
+            }
+            & headers
+        )
+        return has_rut and has_nombre and has_monto
+
+    def _detectar_fila_headers_excel(self, ws, max_scan_rows=25):
+        for row_idx, row in enumerate(
+            ws.iter_rows(min_row=1, max_row=max_scan_rows, values_only=True),
+            start=1,
+        ):
+            headers = [self._normalizar_header(c) for c in row]
+            if self._es_fila_header_import(headers):
+                return row_idx, headers
+
+        fallback_headers = [
+            self._normalizar_header(c.value)
+            for c in next(ws.iter_rows(min_row=1, max_row=1))
+        ]
+        return 1, fallback_headers
+
     def _leer_archivo(self, archivo):
         name = (archivo.name or '').lower()
         rows = []
@@ -2374,8 +2421,11 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                 content = archivo.read()
                 wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
                 ws = wb.active
-                headers = [self._normalizar_header(c.value) for c in next(ws.iter_rows(min_row=1, max_row=1))]
-                for idx, line in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                header_row, headers = self._detectar_fila_headers_excel(ws)
+                for idx, line in enumerate(
+                    ws.iter_rows(min_row=header_row + 1, values_only=True),
+                    start=header_row + 1,
+                ):
                     if all(v is None or str(v).strip() == '' for v in line):
                         continue
                     item = {'_fila': idx}
@@ -3076,9 +3126,102 @@ class SindiAppDashboardView(SindicatoTenantMixin, SindicatoRolePermissionMixin, 
                 'total_movimientos_periodo': movimientos_qs.filter(periodo=periodo_actual).count(),
                 'total_consolidados': consolidados_qs.count(),
                 'ultimos_movimientos': movimientos_qs.select_related('socio', 'tipo_beneficio').order_by('-created_at')[:8],
+                'alertas_activas_count': self.filtrar_por_tenant(
+                    AlertaSindicato.objects.filter(
+                        estado__in=[
+                            AlertaSindicato.ESTADO_PENDIENTE,
+                            AlertaSindicato.ESTADO_EN_REVISION,
+                        ]
+                    )
+                ).count(),
+                'alertas_activas': self.filtrar_por_tenant(
+                    AlertaSindicato.objects.filter(
+                        estado__in=[
+                            AlertaSindicato.ESTADO_PENDIENTE,
+                            AlertaSindicato.ESTADO_EN_REVISION,
+                        ]
+                    )
+                ).select_related('socio').order_by('-created_at')[:5],
             }
         )
         return context
+
+
+class AlertaSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    template_name = 'core/sindiapp/alerta_list.html'
+    context_object_name = 'alertas'
+    permiso_ver = 'alertas_ver'
+    login_url = 'core:login'
+
+    def get_queryset(self):
+        empresa = self.get_empresa_usuario()
+        periodo = self.request.GET.get('periodo', '').strip() or None
+        if empresa:
+            generar_alertas_sindicato(empresa, periodo=periodo)
+
+        qs = self.filtrar_por_tenant(
+            AlertaSindicato.objects.select_related('socio', 'movimiento', 'resuelta_por')
+        )
+
+        estado = self.request.GET.get('estado', '').strip()
+        categoria = self.request.GET.get('categoria', '').strip()
+        prioridad = self.request.GET.get('prioridad', '').strip()
+        if estado:
+            qs = qs.filter(estado=estado)
+        if categoria:
+            qs = qs.filter(categoria=categoria)
+        if prioridad:
+            qs = qs.filter(prioridad=prioridad)
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+
+        return qs.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        base_qs = self.filtrar_por_tenant(AlertaSindicato.objects.all())
+        context['estado_actual'] = self.request.GET.get('estado', '').strip()
+        context['categoria_actual'] = self.request.GET.get('categoria', '').strip()
+        context['prioridad_actual'] = self.request.GET.get('prioridad', '').strip()
+        context['periodo_actual'] = self.request.GET.get('periodo', '').strip()
+        context['periodos'] = (
+            base_qs.exclude(periodo__isnull=True).exclude(periodo='').values_list('periodo', flat=True).distinct().order_by('-periodo')
+        )
+        context['totales_estado'] = {
+            'pendiente': base_qs.filter(estado=AlertaSindicato.ESTADO_PENDIENTE).count(),
+            'en_revision': base_qs.filter(estado=AlertaSindicato.ESTADO_EN_REVISION).count(),
+            'resuelta': base_qs.filter(estado=AlertaSindicato.ESTADO_RESUELTA).count(),
+            'descartada': base_qs.filter(estado=AlertaSindicato.ESTADO_DESCARTADA).count(),
+        }
+        context['categorias'] = AlertaSindicato.CATEGORIA_CHOICES
+        context['estados'] = AlertaSindicato.ESTADO_CHOICES
+        context['prioridades'] = AlertaSindicato.PRIORIDAD_CHOICES
+        return context
+
+
+class AlertaSindicatoAccionView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'alertas_editar'
+    permiso_editar = 'alertas_editar'
+    login_url = 'core:login'
+
+    def post(self, request, pk, accion, *args, **kwargs):
+        qs = self.filtrar_por_tenant(AlertaSindicato.objects.all())
+        alerta = get_object_or_404(qs, pk=pk)
+
+        if accion == 'en-revision':
+            marcar_alerta_en_revision(alerta, request.user)
+            messages.success(request, 'Alerta marcada en revisión.')
+        elif accion == 'resolver':
+            resolver_alerta(alerta, request.user)
+            messages.success(request, 'Alerta marcada como resuelta.')
+        elif accion == 'descartar':
+            descartar_alerta(alerta, request.user)
+            messages.success(request, 'Alerta descartada.')
+        else:
+            messages.error(request, 'Acción no permitida para la alerta.')
+
+        destino = request.POST.get('next') or reverse('core:sindiapp_alerta_list')
+        return redirect(destino)
 
 
 class SindiAppAuditoriaListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
@@ -3160,6 +3303,14 @@ class SindiAppConsolidadoSindicatoCerrarPeriodoView(ConsolidadoSindicatoCerrarPe
 
 
 class SindiAppConsolidadoSindicatoExportarView(ConsolidadoSindicatoExportarView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppAlertaSindicatoListView(AlertaSindicatoListView):
+    login_url = 'core:sindiapp_login'
+
+
+class SindiAppAlertaSindicatoAccionView(AlertaSindicatoAccionView):
     login_url = 'core:sindiapp_login'
 
 

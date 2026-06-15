@@ -60,6 +60,8 @@ from .views import (
     SindiAppConsolidadoSindicatoCerrarPeriodoView,
     SindiAppConsolidadoSindicatoExportarView,
     SindiAppAuditoriaListView,
+    SindiAppAlertaSindicatoListView,
+    SindiAppAlertaSindicatoAccionView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -155,6 +157,8 @@ urlpatterns = [
     path('sindiapp/consolidados/recalcular/', SindiAppConsolidadoSindicatoRecalcularView.as_view(), name='sindiapp_consolidado_recalcular'),
     path('sindiapp/consolidados/cerrar/', SindiAppConsolidadoSindicatoCerrarPeriodoView.as_view(), name='sindiapp_consolidado_cerrar'),
     path('sindiapp/consolidados/<int:pk>/exportar/', SindiAppConsolidadoSindicatoExportarView.as_view(), name='sindiapp_consolidado_exportar'),
+    path('sindiapp/alertas/', SindiAppAlertaSindicatoListView.as_view(), name='sindiapp_alerta_list'),
+    path('sindiapp/alertas/<int:pk>/<str:accion>/', SindiAppAlertaSindicatoAccionView.as_view(), name='sindiapp_alerta_accion'),
     path('sindiapp/auditoria/', SindiAppAuditoriaListView.as_view(), name='sindiapp_auditoria_list'),
 
     # ── Módulo Sindicato MVP ─────────────────────────────────────────

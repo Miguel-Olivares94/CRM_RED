@@ -1,121 +1,173 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}Importar Movimientos Sindicato{% endblock %}
+{% block page_title %}Importar planillas{% endblock %}
 {% block content %}
-<h2>Importar Movimientos Sindicato</h2>
+<div class="sindi-card mb-3">
+  <h4 class="mb-2">Flujo de importación</h4>
+  <div class="sindi-stepper">
+    <div class="sindi-step {% if step == 'upload' %}active{% endif %}">1. Cargar</div>
+    <div class="sindi-step {% if step == 'preview' %}active{% endif %}">2. Preview</div>
+    <div class="sindi-step {% if step == 'resultado' %}active{% endif %}">3. Confirmar</div>
+    <div class="sindi-step {% if step == 'resultado' %}active{% endif %}">4. Resultado</div>
+  </div>
+</div>
 
 {% if error %}
-  <p style="color:#b00020;">{{ error }}</p>
+  <div class="alert alert-danger">{{ error }}</div>
 {% endif %}
 
 {% if step == 'upload' %}
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <p>
-      <label>Tipo de beneficio:</label>
-      <select name="tipo_beneficio" required>
-        <option value="">-- Selecciona --</option>
-        {% for b in beneficios %}
-          <option value="{{ b.id }}">{{ b.codigo }} - {{ b.nombre }}</option>
-        {% endfor %}
-      </select>
-    </p>
-    <p>
-      <label>Período (YYYY-MM):</label>
-      <input type="text" name="periodo" placeholder="2026-06" required>
-    </p>
-    <p>
-      <label>Archivo Excel/CSV:</label>
-      <input type="file" name="archivo" accept=".xlsx,.xls,.csv" required>
-    </p>
-    <button type="submit">Previsualizar</button>
-  </form>
-
-  <h4>Columnas esperadas</h4>
-  <p>Obligatorias: RUT, Nombre, Monto.</p>
-  <p>Opcionales: Observación, Referencia externa, Site, Cantidad, Tipo de vale, Número línea, Fecha entrega.</p>
+  <div class="sindi-card">
+    <form method="post" enctype="multipart/form-data" class="sindi-form-grid">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Tipo de beneficio</label>
+          <select class="form-select" name="tipo_beneficio" required>
+            <option value="">-- Selecciona --</option>
+            {% for b in beneficios %}
+              <option value="{{ b.id }}">{{ b.codigo }} - {{ b.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Período (YYYY-MM)</label>
+          <input class="form-control" type="text" name="periodo" placeholder="2026-06" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Archivo Excel/CSV</label>
+          <input class="form-control" type="file" name="archivo" accept=".xlsx,.xls,.csv" required>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary sindi-cta" type="submit">Previsualizar archivo</button>
+      </div>
+    </form>
+    <hr>
+    <h6>Columnas esperadas</h6>
+    <p class="mb-1">Obligatorias: RUT, Nombre, Monto.</p>
+    <p class="mb-0">Opcionales: Observación, Referencia externa, Site, Cantidad, Tipo de vale, Número línea, Fecha entrega.</p>
+  </div>
 {% elif step == 'preview' %}
-  <p><strong>Beneficio:</strong> {{ beneficio.nombre }} | <strong>Período:</strong> {{ periodo }}</p>
-  <p>Total filas: {{ total_filas }} | Válidas: {{ validas }} | Rechazadas: {{ rechazadas }}</p>
+  <div class="sindi-card mb-3">
+    <div class="row g-2">
+      <div class="col-md-3"><span class="sindi-badge sindi-badge-info">Beneficio: {{ beneficio.nombre }}</span></div>
+      <div class="col-md-3"><span class="sindi-badge sindi-badge-accent">Período: {{ periodo }}</span></div>
+      <div class="col-md-2"><span class="sindi-badge sindi-badge-info">Filas: {{ total_filas }}</span></div>
+      <div class="col-md-2"><span class="sindi-badge sindi-badge-success">Válidas: {{ validas }}</span></div>
+      <div class="col-md-2"><span class="sindi-badge sindi-badge-danger">Rechazadas: {{ rechazadas }}</span></div>
+    </div>
+  </div>
 
-  <table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-      <tr>
-        <th>Fila</th>
-        <th>RUT</th>
-        <th>Nombre</th>
-        <th>Monto</th>
-        <th>Estado</th>
-        <th>Motivo</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in preview %}
-      <tr>
-        <td>{{ row.fila }}</td>
-        <td>{{ row.rut }}</td>
-        <td>{{ row.nombre }}</td>
-        <td>{{ row.monto }}</td>
-        <td>{{ row.estado }}</td>
-        <td>{{ row.motivo }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="sindi-card">
+    <div class="sindi-table-wrap table-responsive">
+      <table class="table sindi-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Fila</th>
+            <th>RUT</th>
+            <th>Nombre</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview %}
+          <tr>
+            <td>{{ row.fila }}</td>
+            <td>{{ row.rut }}</td>
+            <td>{{ row.nombre }}</td>
+            <td>{{ row.monto }}</td>
+            <td>
+              {% if row.estado == 'VALIDA' %}
+                <span class="sindi-badge sindi-badge-success">{{ row.estado }}</span>
+              {% else %}
+                <span class="sindi-badge sindi-badge-danger">{{ row.estado }}</span>
+              {% endif %}
+            </td>
+            <td>{{ row.motivo }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-  {% if validas > 0 %}
-  <form method="post" style="margin-top:16px;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="confirmar">
-    <button type="submit">Confirmar importación</button>
-  </form>
-  {% endif %}
-
-  <p><a href="{% url 'core:sindiapp_movimiento_import' %}">Subir otro archivo</a></p>
+    <div class="d-flex gap-2 mt-3">
+      {% if validas > 0 %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirmar">
+        <button class="btn btn-primary sindi-cta" type="submit">Confirmar importación</button>
+      </form>
+      {% endif %}
+      <a class="btn btn-outline-secondary sindi-cta" href="{% url 'core:sindiapp_movimiento_import' %}">Subir otro archivo</a>
+    </div>
+  </div>
 {% elif step == 'resultado' %}
-  <p><strong>Beneficio:</strong> {{ beneficio.nombre }} | <strong>Período:</strong> {{ periodo }}</p>
-  <p>Total filas leídas: {{ total_filas }}</p>
-  <p>Filas válidas (preview): {{ validas }}</p>
-  <p>Filas rechazadas: {{ rechazadas }}</p>
-  <p>Movimientos creados: {{ movimientos_creados }}</p>
+  <div class="sindi-card mb-3">
+    <h5 class="mb-2">Resultado de importación</h5>
+    <div class="row g-2">
+      <div class="col-md-4"><span class="sindi-badge sindi-badge-info">Beneficio: {{ beneficio.nombre }}</span></div>
+      <div class="col-md-4"><span class="sindi-badge sindi-badge-accent">Período: {{ periodo }}</span></div>
+      <div class="col-md-4"><span class="sindi-badge sindi-badge-success">Movimientos creados: {{ movimientos_creados }}</span></div>
+    </div>
+    <div class="row g-2 mt-1">
+      <div class="col-md-3">Total filas: <strong>{{ total_filas }}</strong></div>
+      <div class="col-md-3">Válidas: <strong>{{ validas }}</strong></div>
+      <div class="col-md-3">Rechazadas: <strong>{{ rechazadas }}</strong></div>
+    </div>
+  </div>
 
   {% if rechazos_confirmacion %}
-    <h4>Rechazos al confirmar</h4>
-    <ul>
-      {% for r in rechazos_confirmacion %}
-        <li>Fila {{ r.fila }}: {{ r.motivo }}</li>
-      {% endfor %}
-    </ul>
+    <div class="alert alert-warning">
+      <strong>Rechazos al confirmar:</strong>
+      <ul class="mb-0 mt-1">
+        {% for r in rechazos_confirmacion %}
+          <li>Fila {{ r.fila }}: {{ r.motivo }}</li>
+        {% endfor %}
+      </ul>
+    </div>
   {% endif %}
 
-  <h4>Detalle por fila</h4>
-  <table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-      <tr>
-        <th>Fila</th>
-        <th>RUT</th>
-        <th>Nombre</th>
-        <th>Monto</th>
-        <th>Estado</th>
-        <th>Motivo</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in preview %}
-      <tr>
-        <td>{{ row.fila }}</td>
-        <td>{{ row.rut }}</td>
-        <td>{{ row.nombre }}</td>
-        <td>{{ row.monto }}</td>
-        <td>{{ row.estado }}</td>
-        <td>{{ row.motivo }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <p style="margin-top:16px;">
-    <a href="{% url 'core:sindiapp_movimiento_import' %}">Nueva importación</a> |
-    <a href="{% url 'core:sindiapp_movimiento_list' %}">Volver a movimientos</a>
-  </p>
+  <div class="sindi-card">
+    <h6>Detalle por fila</h6>
+    <div class="sindi-table-wrap table-responsive">
+      <table class="table sindi-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Fila</th>
+            <th>RUT</th>
+            <th>Nombre</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview %}
+          <tr>
+            <td>{{ row.fila }}</td>
+            <td>{{ row.rut }}</td>
+            <td>{{ row.nombre }}</td>
+            <td>{{ row.monto }}</td>
+            <td>
+              {% if row.estado == 'VALIDA' %}
+                <span class="sindi-badge sindi-badge-success">{{ row.estado }}</span>
+              {% else %}
+                <span class="sindi-badge sindi-badge-danger">{{ row.estado }}</span>
+              {% endif %}
+            </td>
+            <td>{{ row.motivo }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <a class="btn btn-outline-primary sindi-cta" href="{% url 'core:sindiapp_movimiento_import' %}">Nueva importación</a>
+      <a class="btn btn-outline-secondary sindi-cta" href="{% url 'core:sindiapp_movimiento_list' %}">Volver a movimientos</a>
+    </div>
+  </div>
 {% endif %}
 {% endblock %}

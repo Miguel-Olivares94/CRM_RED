@@ -3,28 +3,99 @@
 {% block page_title %}Dashboard sindical{% endblock %}
 {% block content %}
 <div class="row g-3 mb-3">
-  <div class="col-md-6 col-lg-3"><div class="sindi-card"><div class="text-secondary small">Socios</div><div style="font-size:28px;font-weight:700;">{{ total_socios }}</div></div></div>
-  <div class="col-md-6 col-lg-3"><div class="sindi-card"><div class="text-secondary small">Beneficios activos</div><div style="font-size:28px;font-weight:700;">{{ total_beneficios_activos }}</div></div></div>
-  <div class="col-md-6 col-lg-3"><div class="sindi-card"><div class="text-secondary small">Movimientos {{ periodo_actual }}</div><div style="font-size:28px;font-weight:700;">{{ total_movimientos_periodo }}</div></div></div>
-  <div class="col-md-6 col-lg-3"><div class="sindi-card"><div class="text-secondary small">Consolidados</div><div style="font-size:28px;font-weight:700;">{{ total_consolidados }}</div></div></div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="sindi-card-title">Socios</div>
+          <div class="sindi-kpi-value">{{ total_socios }}</div>
+        </div>
+        <span class="sindi-badge sindi-badge-info"><i class="bi bi-people-fill"></i> Base activa</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="sindi-card-title">Beneficios activos</div>
+          <div class="sindi-kpi-value">{{ total_beneficios_activos }}</div>
+        </div>
+        <span class="sindi-badge sindi-badge-success"><i class="bi bi-shield-check"></i> Vigentes</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="sindi-card-title">Movimientos {{ periodo_actual }}</div>
+          <div class="sindi-kpi-value">{{ total_movimientos_periodo }}</div>
+        </div>
+        <span class="sindi-badge sindi-badge-accent"><i class="bi bi-lightning-charge"></i> En curso</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="sindi-card-title">Alertas activas</div>
+          <div class="sindi-kpi-value">{{ alertas_activas_count }}</div>
+        </div>
+        <span class="sindi-badge sindi-badge-danger"><i class="bi bi-bell-fill"></i> Monitoreo</span>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="sindi-card mb-3">
-  <h5 class="mb-2">Accesos rápidos</h5>
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_socio_list' %}">Socios</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_beneficio_list' %}">Beneficios</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_movimiento_list' %}">Movimientos</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_movimiento_import' %}">Importar planillas</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_consulta_rut' %}">Consulta RUT</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:sindiapp_consolidado_historial' %}">Consolidados</a>
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="sindi-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Resumen por beneficio (últimos movimientos)</h5>
+        <span class="small text-secondary">Muestra operativa actual</span>
+      </div>
+      {% regroup ultimos_movimientos by tipo_beneficio.nombre as beneficios_resumen %}
+      <div class="row g-2">
+        {% for grupo in beneficios_resumen %}
+          <div class="col-md-6">
+            <div class="border rounded-3 p-2 h-100">
+              <div class="fw-semibold">{{ grupo.grouper }}</div>
+              <div class="small text-secondary">Movimientos recientes: {{ grupo.list|length }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12 text-secondary">Sin información reciente para resumir.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="sindi-card h-100">
+      <h5 class="mb-2">Estado del proceso</h5>
+      <div class="d-flex flex-column gap-2">
+        <span class="sindi-badge sindi-badge-success"><i class="bi bi-check-circle"></i> Maestros disponibles</span>
+        <span class="sindi-badge sindi-badge-info"><i class="bi bi-cloud-upload"></i> Importación habilitada</span>
+        <span class="sindi-badge sindi-badge-accent"><i class="bi bi-calculator"></i> Consolidación periódica</span>
+      </div>
+      <hr>
+      <h6 class="mb-2">Acciones rápidas</h6>
+      <div class="d-grid gap-2">
+        <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_movimiento_import' %}"><i class="bi bi-file-earmark-arrow-up"></i> Importar planillas</a>
+        <a class="btn btn-outline-primary sindi-cta" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-table"></i> Revisar consolidados</a>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="sindi-card">
-  <h5 class="mb-2">Últimos movimientos</h5>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Últimos movimientos</h5>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_movimiento_list' %}">Ver todos</a>
+  </div>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
       <thead>
         <tr>
           <th>Periodo</th>
@@ -37,14 +108,60 @@
       <tbody>
         {% for mov in ultimos_movimientos %}
           <tr>
-            <td>{{ mov.periodo }}</td>
+            <td><span class="sindi-badge sindi-badge-info">{{ mov.periodo }}</span></td>
             <td>{{ mov.socio.rut }}</td>
             <td>{{ mov.socio.nombre }}</td>
             <td>{{ mov.tipo_beneficio.nombre }}</td>
-            <td>{{ mov.monto }}</td>
+            <td class="fw-semibold">{{ mov.monto }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="5" class="text-secondary">Sin movimientos recientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sindi-card mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Alertas activas</h5>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_alerta_list' %}">Gestionar alertas</a>
+  </div>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Periodo</th>
+          <th>Detalle</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alerta in alertas_activas %}
+          <tr>
+            <td>{{ alerta.get_categoria_display }}</td>
+            <td>{{ alerta.periodo|default:'-' }}</td>
+            <td>
+              <div class="fw-semibold">{{ alerta.titulo }}</div>
+              <div class="small text-secondary">{{ alerta.descripcion|truncatechars:95 }}</div>
+            </td>
+            <td>
+              {% if alerta.prioridad == 'CRITICA' %}
+                <span class="badge bg-danger">Crítica</span>
+              {% elif alerta.prioridad == 'ALTA' %}
+                <span class="badge bg-warning text-dark">Alta</span>
+              {% elif alerta.prioridad == 'MEDIA' %}
+                <span class="badge bg-info text-dark">Media</span>
+              {% else %}
+                <span class="badge bg-secondary">Baja</span>
+              {% endif %}
+            </td>
+            <td><span class="sindi-badge sindi-badge-info">{{ alerta.get_estado_display }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-secondary">No hay alertas activas.</td></tr>
         {% endfor %}
       </tbody>
     </table>

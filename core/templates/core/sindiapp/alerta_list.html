@@ -1,0 +1,150 @@
+{% extends 'core/sindiapp/base.html' %}
+{% block title %}SindiApp | Alertas{% endblock %}
+{% block page_title %}Alertas sindicales{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Pendientes</div>
+      <div class="sindi-kpi-value">{{ totales_estado.pendiente }}</div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">En revisión</div>
+      <div class="sindi-kpi-value">{{ totales_estado.en_revision }}</div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Resueltas</div>
+      <div class="sindi-kpi-value">{{ totales_estado.resuelta }}</div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="sindi-card h-100">
+      <div class="sindi-card-title">Descartadas</div>
+      <div class="sindi-kpi-value">{{ totales_estado.descartada }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="sindi-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        {% for code, label in estados %}
+          <option value="{{ code }}" {% if estado_actual == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Categoría</label>
+      <select name="categoria" class="form-select">
+        <option value="">Todas</option>
+        {% for code, label in categorias %}
+          <option value="{{ code }}" {% if categoria_actual == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Periodo</label>
+      <select name="periodo" class="form-select">
+        <option value="">Todos</option>
+        {% for p in periodos %}
+          <option value="{{ p }}" {% if periodo_actual == p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Prioridad</label>
+      <select name="prioridad" class="form-select">
+        <option value="">Todas</option>
+        {% for code, label in prioridades %}
+          <option value="{{ code }}" {% if prioridad_actual == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-grid">
+      <button type="submit" class="btn btn-primary sindi-cta"><i class="bi bi-funnel"></i> Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<div class="sindi-card">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Listado de alertas</h5>
+    <span class="small text-secondary">Se regeneran automáticamente al abrir esta vista.</span>
+  </div>
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Categoría</th>
+          <th>Alerta</th>
+          <th>Periodo</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alerta in alertas %}
+          <tr>
+            <td>{{ alerta.created_at|date:'d-m-Y H:i' }}</td>
+            <td><span class="sindi-badge sindi-badge-info">{{ alerta.get_categoria_display }}</span></td>
+            <td>
+              <div class="fw-semibold">{{ alerta.titulo }}</div>
+              <div class="small text-secondary">{{ alerta.descripcion }}</div>
+              {% if alerta.socio %}
+                <div class="small">Socio: {{ alerta.socio.rut }} - {{ alerta.socio.nombre }}</div>
+              {% endif %}
+            </td>
+            <td>{{ alerta.periodo|default:'-' }}</td>
+            <td>
+              {% if alerta.prioridad == 'CRITICA' %}
+                <span class="badge bg-danger">Crítica</span>
+              {% elif alerta.prioridad == 'ALTA' %}
+                <span class="badge bg-warning text-dark">Alta</span>
+              {% elif alerta.prioridad == 'MEDIA' %}
+                <span class="badge bg-info text-dark">Media</span>
+              {% else %}
+                <span class="badge bg-secondary">Baja</span>
+              {% endif %}
+            </td>
+            <td>{{ alerta.get_estado_display }}</td>
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+                {% if alerta.estado != 'RESUELTA' and alerta.estado != 'DESCARTADA' %}
+                  <form method="post" action="{% url 'core:sindiapp_alerta_accion' alerta.id 'en-revision' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="btn btn-sm btn-outline-info" type="submit">En revisión</button>
+                  </form>
+                  <form method="post" action="{% url 'core:sindiapp_alerta_accion' alerta.id 'resolver' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="btn btn-sm btn-outline-success" type="submit">Resolver</button>
+                  </form>
+                  <form method="post" action="{% url 'core:sindiapp_alerta_accion' alerta.id 'descartar' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Descartar</button>
+                  </form>
+                {% else %}
+                  <span class="small text-secondary">{{ alerta.get_estado_display }}{% if alerta.resuelta_por %} por {{ alerta.resuelta_por.get_full_name|default:alerta.resuelta_por.username }}{% endif %}</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-secondary">No hay alertas para los filtros seleccionados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

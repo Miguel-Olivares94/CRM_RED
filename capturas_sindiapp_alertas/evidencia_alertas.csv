@@ -1,0 +1,23 @@
+metrica,valor
+empresa,Empresa Alertas Demo
+total_alertas,8
+idempotencia_before,8
+idempotencia_after_first,8
+idempotencia_after_second,8
+idempotencia_no_duplicados,SI
+tenant_isolation_leak_count,0
+tenant_isolation_ok,SI
+categoria_CONSOLIDADO,3
+categoria_IMPORTACION,2
+categoria_TELEFONIA,3
+prioridad_ALTA,4
+prioridad_CRITICA,1
+prioridad_MEDIA,3
+estado_DESCARTADA,1
+estado_EN_REVISION,1
+estado_PENDIENTE,5
+estado_RESUELTA,1
+ejemplo_alerta_id,3
+ejemplo_alerta_tipo,TELEFONIA_PREVENTIVA_20
+ejemplo_fecha_entrega,15-10-2024
+ejemplo_meses_transcurridos,20
