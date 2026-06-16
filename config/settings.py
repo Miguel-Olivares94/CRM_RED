@@ -162,8 +162,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'core' / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Módulo Documentos/OCR: visible en sidebar.
+# Poner False en Railway si OCR productivo no está instalado y no se incluye en el piloto.
+SINDIAPP_DOCUMENTOS_HABILITADO = os.environ.get('SINDIAPP_DOCUMENTOS_HABILITADO', 'True') == 'True'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
