@@ -1,17 +1,25 @@
 {% extends 'core/sindiapp/base.html' %}
 {% block title %}SindiApp | Documentos{% endblock %}
-{% block page_title %}Documentos OCR{% endblock %}
+{% block page_title %}Documentos{% endblock %}
 {% block content %}
 
 <div class="row g-3 mb-3">
   {% for valor, etiqueta in estados %}
   <div class="col-6 col-md-4 col-xl-2">
-    <div class="sindi-card h-100 text-center py-2">
-      <div class="sindi-card-title">{{ etiqueta }}</div>
-      <div class="sindi-kpi-value" style="font-size:22px;">
-        {{ documentos|length }}
+    <a href="?estado={{ valor }}" class="text-decoration-none">
+      <div class="sindi-card h-100 text-center py-2 {% if request.GET.estado == valor %}border-primary{% endif %}" style="{% if request.GET.estado == valor %}border-color: var(--sindi-primary)!important;{% endif %}">
+        <div class="sindi-card-title">{{ etiqueta }}</div>
+        <div class="sindi-kpi-value" style="font-size:22px;">
+          {% if valor == 'SUBIDO' %}{{ conteos.SUBIDO|default:0 }}
+          {% elif valor == 'PROCESADO' %}{{ conteos.PROCESADO|default:0 }}
+          {% elif valor == 'EN_REVISION' %}{{ conteos.EN_REVISION|default:0 }}
+          {% elif valor == 'CONFIRMADO' %}{{ conteos.CONFIRMADO|default:0 }}
+          {% elif valor == 'RECHAZADO' %}{{ conteos.RECHAZADO|default:0 }}
+          {% elif valor == 'ERROR' %}{{ conteos.ERROR|default:0 }}
+          {% else %}0{% endif %}
+        </div>
       </div>
-    </div>
+    </a>
   </div>
   {% endfor %}
 </div>
@@ -61,9 +69,7 @@
         {% for doc in documentos %}
         <tr>
           <td class="text-nowrap">{{ doc.created_at|date:'d-m-Y H:i' }}</td>
-          <td>
-            <span class="fw-semibold">{{ doc.nombre_archivo }}</span>
-          </td>
+          <td><span class="fw-semibold">{{ doc.nombre_archivo }}</span></td>
           <td><span class="sindi-badge sindi-badge-info">{{ doc.tipo_archivo }}</span></td>
           <td>
             {% if doc.estado == 'CONFIRMADO' %}
@@ -73,7 +79,7 @@
             {% elif doc.estado == 'EN_REVISION' %}
               <span class="sindi-badge sindi-badge-accent"><i class="bi bi-eye-fill"></i> En revisión</span>
             {% elif doc.estado == 'ERROR' %}
-              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error</span>
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error de lectura</span>
             {% elif doc.estado == 'PROCESADO' %}
               <span class="sindi-badge sindi-badge-info"><i class="bi bi-cpu-fill"></i> Procesado</span>
             {% else %}
@@ -89,17 +95,34 @@
             {% endif %}
           </td>
           <td>
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_documento_revisar' doc.pk %}">
-              <i class="bi bi-eye"></i> Revisar
-            </a>
+            {% if doc.estado == 'CONFIRMADO' or doc.estado == 'RECHAZADO' %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_documento_revisar' doc.pk %}">
+                <i class="bi bi-eye"></i> Ver detalle
+              </a>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'core:sindiapp_documento_revisar' doc.pk %}">
+                <i class="bi bi-pencil-square"></i> Revisar
+              </a>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-secondary">Sin documentos para los filtros seleccionados.</td></tr>
+        <tr>
+          <td colspan="7" class="text-center py-4">
+            <div class="text-secondary mb-2">Sin documentos para los filtros seleccionados.</div>
+            {% if puede_subir %}
+              <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_documento_subir' %}">
+                <i class="bi bi-file-earmark-arrow-up"></i> Subir primer documento
+              </a>
+            {% endif %}
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <div class="small text-secondary mt-2 px-1">Mostrando hasta los últimos 200 documentos.</div>
+  {% if documentos|length >= 200 %}
+  <div class="small text-secondary mt-2 px-1">Mostrando los últimos 200 documentos.</div>
+  {% endif %}
 </div>
 {% endblock %}

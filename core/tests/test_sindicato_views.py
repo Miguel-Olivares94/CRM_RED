@@ -1646,6 +1646,23 @@ class DocumentoSindicatoTests(TestCase):
         self.assertIsNone(doc.movimiento_creado)
         self.assertEqual(MovimientoSindicato.objects.filter(empresa=self.empresa_a).count(), 0)
 
+    def test_rechazar_sin_motivo_no_rechaza(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_rech_empty.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_rechazar', args=[doc.pk]),
+            data={'motivo': ''},
+        )
+        doc.refresh_from_db()
+        self.assertNotEqual(doc.estado, DocumentoSindicato.ESTADO_RECHAZADO)
+
     def test_rechazar_crea_auditoria(self):
         doc = DocumentoSindicato.objects.create(
             empresa=self.empresa_a,
@@ -1708,6 +1725,30 @@ class DocumentoSindicatoTests(TestCase):
         self.assertEqual(datos.rut, '12.345.678-9')
         self.assertEqual(datos.numero_documento, '1234')
         self.assertEqual(datos.total, '50000')
+
+    def test_subir_archivo_demasiado_grande_rechaza(self):
+        self.client.force_login(self.admin_a)
+        contenido_grande = b'X' * (11 * 1024 * 1024)
+        archivo = SimpleUploadedFile('grande.jpg', contenido_grande, content_type='image/jpeg')
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': archivo},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(DocumentoSindicato.objects.filter(empresa=self.empresa_a).count(), 0)
+
+    def test_auditoria_subir_guarda_confianza_no_proveedor(self):
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._jpg_file('audit_conf.jpg')},
+        )
+        audit = AuditoriaSindicato.objects.filter(
+            empresa=self.empresa_a, accion='SUBIR_DOCUMENTO'
+        ).last()
+        self.assertIsNotNone(audit)
+        self.assertIn('confianza=', audit.resumen)
+        self.assertNotIn('proveedor=', audit.resumen)
 
     def test_ocr_error_marca_documento_como_error(self):
         """Si el proveedor OCR falla, el documento queda en estado ERROR."""

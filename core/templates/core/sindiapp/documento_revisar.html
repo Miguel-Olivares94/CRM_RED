@@ -9,7 +9,7 @@
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
         <div>
           <h5 class="mb-1">{{ documento.nombre_archivo }}</h5>
-          <div class="d-flex gap-2 flex-wrap">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
             <span class="sindi-badge sindi-badge-info">{{ documento.tipo_archivo }}</span>
             {% if documento.estado == 'CONFIRMADO' %}
               <span class="sindi-badge sindi-badge-success"><i class="bi bi-check-circle-fill"></i> Confirmado</span>
@@ -18,26 +18,45 @@
             {% elif documento.estado == 'EN_REVISION' %}
               <span class="sindi-badge sindi-badge-accent"><i class="bi bi-eye-fill"></i> En revisión</span>
             {% elif documento.estado == 'ERROR' %}
-              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error OCR</span>
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error de lectura</span>
             {% else %}
               <span class="sindi-badge sindi-badge-info">{{ documento.get_estado_display }}</span>
             {% endif %}
-            <span class="sindi-badge sindi-badge-info">Subido {{ documento.created_at|date:'d-m-Y H:i' }}</span>
+            <span class="text-secondary small">Subido {{ documento.created_at|date:'d-m-Y H:i' }}</span>
+            {% if documento.archivo %}
+            <a href="{{ documento.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-file-earmark-arrow-down"></i> Ver archivo original
+            </a>
+            {% endif %}
           </div>
         </div>
         <a class="btn btn-outline-secondary sindi-cta" href="{% url 'core:sindiapp_documento_list' %}">
           <i class="bi bi-arrow-left"></i> Volver
         </a>
       </div>
-
-      {% if documento.estado == 'ERROR' and documento.error_mensaje %}
-      <div class="alert alert-danger mt-3 mb-0">
-        <strong><i class="bi bi-exclamation-triangle-fill"></i> Error OCR:</strong> {{ documento.error_mensaje }}
-      </div>
-      {% endif %}
     </div>
   </div>
 </div>
+
+{% if documento.estado == 'ERROR' %}
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="alert alert-warning d-flex gap-3 align-items-start mb-0" role="alert">
+      <i class="bi bi-exclamation-triangle-fill fs-4 mt-1 flex-shrink-0"></i>
+      <div>
+        <strong>No pudimos leer el documento automáticamente.</strong>
+        <div class="mt-1">Puedes igualmente ingresar los datos manualmente en el formulario de abajo, o rechazar el documento si no es válido.</div>
+        {% if documento.error_mensaje %}
+        <details class="mt-2">
+          <summary class="small text-secondary" style="cursor:pointer;">Ver detalle técnico del error</summary>
+          <pre class="mt-1 p-2 bg-light rounded small" style="white-space:pre-wrap;max-height:120px;overflow:auto;">{{ documento.error_mensaje }}</pre>
+        </details>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="row g-3">
 
@@ -45,30 +64,41 @@
   <div class="col-lg-6">
     <div class="sindi-card h-100">
       <h6 class="mb-3">
-        <i class="bi bi-cpu"></i> Datos extraídos por OCR
+        <i class="bi bi-cpu"></i> Datos leídos automáticamente
         <span class="ms-2
           {% if datos.confianza == 'ALTA' %}sindi-badge sindi-badge-success
           {% elif datos.confianza == 'MEDIA' %}sindi-badge sindi-badge-accent
           {% else %}sindi-badge sindi-badge-danger{% endif %}">
-          Confianza {{ datos.confianza }}
+          {% if datos.confianza == 'ALTA' %}Lectura precisa
+          {% elif datos.confianza == 'MEDIA' %}Verifica los datos
+          {% else %}Datos pueden ser incorrectos{% endif %}
         </span>
       </h6>
       <div class="row g-2">
-        {% with campos=datos.to_dict.items %}
-          {% for clave, valor in campos %}
-            {% if clave != 'confianza' %}
-            <div class="col-md-6">
-              <div class="sindi-card-title">{{ clave|capfirst|cut:"_" }}</div>
-              <div class="fw-semibold">{{ valor|default:"—" }}</div>
+        {% for clave, valor in datos.to_dict.items %}
+          {% if clave != 'confianza' and clave != 'observaciones' %}
+          <div class="col-md-6">
+            <div class="sindi-card-title">
+              {% if clave == 'rut' %}RUT del emisor
+              {% elif clave == 'nombre' %}Nombre del emisor
+              {% elif clave == 'tipo_documento' %}Tipo de documento
+              {% elif clave == 'numero_documento' %}Número de documento
+              {% elif clave == 'fecha' %}Fecha
+              {% elif clave == 'monto_neto' %}Monto neto ($)
+              {% elif clave == 'iva' %}IVA ($)
+              {% elif clave == 'total' %}Total ($)
+              {% elif clave == 'beneficio_sugerido' %}Beneficio sugerido
+              {% else %}{{ clave|capfirst }}{% endif %}
             </div>
-            {% endif %}
-          {% endfor %}
-        {% endwith %}
+            <div class="fw-semibold">{{ valor|default:"—" }}</div>
+          </div>
+          {% endif %}
+        {% endfor %}
       </div>
       {% if documento.texto_extraido %}
       <details class="mt-3">
-        <summary class="small text-secondary" style="cursor:pointer;">Ver texto extraído completo</summary>
-        <pre class="mt-2 p-2 bg-light rounded small" style="max-height:200px;overflow:auto;white-space:pre-wrap;">{{ documento.texto_extraido }}</pre>
+        <summary class="small text-secondary" style="cursor:pointer;">Ver texto completo extraído</summary>
+        <pre class="mt-2 p-2 bg-light rounded small" style="max-height:200px;overflow:auto;white-space:pre-wrap;">{{ documento.texto_extraido|slice:":3000" }}</pre>
       </details>
       {% endif %}
     </div>
@@ -78,34 +108,47 @@
   <div class="col-lg-6">
     {% if documento.estado == 'CONFIRMADO' %}
       <div class="sindi-card h-100">
-        <h6><i class="bi bi-check-circle-fill text-success"></i> Documento ya confirmado</h6>
-        <p class="text-secondary">Este documento fue confirmado y generó el movimiento
+        <h6><i class="bi bi-check-circle-fill text-success"></i> Documento confirmado</h6>
+        <p class="text-secondary">Este documento generó el movimiento
           <strong>#{{ documento.movimiento_creado.pk }}</strong>.</p>
-        <div class="mt-2">
-          <span class="sindi-card-title">Revisado por</span>
-          <div>{{ documento.revisado_por.username|default:'—' }}</div>
-        </div>
-        <div class="mt-2">
-          <span class="sindi-card-title">Observación</span>
-          <div>{{ documento.observacion_revision|default:'—' }}</div>
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <div class="sindi-card-title">Revisado por</div>
+            <div>{{ documento.revisado_por.username|default:'—' }}</div>
+          </div>
+          <div class="col-6">
+            <div class="sindi-card-title">Fecha revisión</div>
+            <div>{{ documento.fecha_revision|date:'d-m-Y H:i'|default:'—' }}</div>
+          </div>
+          {% if documento.observacion_revision %}
+          <div class="col-12">
+            <div class="sindi-card-title">Observación</div>
+            <div>{{ documento.observacion_revision }}</div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
     {% elif documento.estado == 'RECHAZADO' %}
       <div class="sindi-card h-100">
         <h6><i class="bi bi-x-circle-fill text-danger"></i> Documento rechazado</h6>
-        <div class="mt-2">
-          <span class="sindi-card-title">Motivo</span>
-          <div>{{ documento.observacion_revision|default:'Sin motivo registrado' }}</div>
-        </div>
-        <div class="mt-2">
-          <span class="sindi-card-title">Rechazado por</span>
-          <div>{{ documento.revisado_por.username|default:'—' }}</div>
+        <div class="row g-2 mt-1">
+          <div class="col-12">
+            <div class="sindi-card-title">Motivo</div>
+            <div>{{ documento.observacion_revision|default:'Sin motivo registrado' }}</div>
+          </div>
+          <div class="col-6">
+            <div class="sindi-card-title">Rechazado por</div>
+            <div>{{ documento.revisado_por.username|default:'—' }}</div>
+          </div>
+          <div class="col-6">
+            <div class="sindi-card-title">Fecha</div>
+            <div>{{ documento.fecha_revision|date:'d-m-Y H:i'|default:'—' }}</div>
+          </div>
         </div>
       </div>
 
     {% elif puede_revisar %}
-      <!-- Formulario de confirmación -->
       <div class="sindi-card h-100">
         <h6 class="mb-3"><i class="bi bi-pencil-square"></i> Completar y confirmar</h6>
         <form method="post" action="{% url 'core:sindiapp_documento_confirmar' documento.pk %}" class="sindi-form-grid" id="form-confirmar">
@@ -117,7 +160,8 @@
               <option value="">— Selecciona socio —</option>
               {% for socio in socios %}
                 <option value="{{ socio.pk }}"
-                  {% if datos.rut and datos.rut in socio.rut %}selected{% endif %}>
+                  {% if form_post.socio == socio.pk|stringformat:"s" %}selected
+                  {% elif not form_post and datos.rut and datos.rut in socio.rut %}selected{% endif %}>
                   {{ socio.rut }} — {{ socio.nombre }}
                 </option>
               {% endfor %}
@@ -130,7 +174,8 @@
               <option value="">— Selecciona beneficio —</option>
               {% for ben in beneficios %}
                 <option value="{{ ben.pk }}"
-                  {% if datos.beneficio_sugerido and datos.beneficio_sugerido|lower in ben.nombre|lower %}selected{% endif %}>
+                  {% if form_post.tipo_beneficio == ben.pk|stringformat:"s" %}selected
+                  {% elif not form_post and datos.beneficio_sugerido and datos.beneficio_sugerido|lower in ben.nombre|lower %}selected{% endif %}>
                   {{ ben.nombre }}
                 </option>
               {% endfor %}
@@ -140,52 +185,76 @@
           <div class="row g-2 mb-3">
             <div class="col-md-6">
               <label class="form-label">Período <span class="text-danger">*</span></label>
-              <input type="text" name="periodo" class="form-control"
-                     placeholder="YYYY-MM" required maxlength="7">
+              <input type="month" name="periodo" class="form-control" required
+                     value="{{ form_post.periodo|default:'' }}">
             </div>
             <div class="col-md-6">
               <label class="form-label">Monto ($) <span class="text-danger">*</span></label>
               <input type="number" name="monto" class="form-control"
                      min="1" step="1" required
-                     value="{{ datos.total|default:'' }}">
+                     value="{{ form_post.monto|default:datos.total|default:'' }}">
             </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Observación</label>
-            <input type="text" name="observacion" class="form-control" maxlength="300">
+            <input type="text" name="observacion" class="form-control" maxlength="300"
+                   value="{{ form_post.observacion|default:'' }}">
           </div>
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-success sindi-cta">
-              <i class="bi bi-check-circle"></i> Confirmar y crear movimiento
+              <i class="bi bi-check-circle"></i> Confirmar
+            </button>
+            <button type="button" class="btn btn-outline-danger sindi-cta"
+                    data-bs-toggle="modal" data-bs-target="#modalRechazo">
+              <i class="bi bi-x-circle"></i> Rechazar
             </button>
           </div>
-        </form>
-
-        <hr>
-
-        <!-- Formulario de rechazo -->
-        <form method="post" action="{% url 'core:sindiapp_documento_rechazar' documento.pk %}" id="form-rechazar">
-          {% csrf_token %}
-          <div class="mb-2">
-            <label class="form-label">Motivo del rechazo</label>
-            <input type="text" name="motivo" class="form-control" maxlength="300"
-                   placeholder="Ej: documento ilegible, datos incorrectos…">
-          </div>
-          <button type="submit" class="btn btn-outline-danger sindi-cta"
-                  onclick="return confirm('¿Confirmas que deseas rechazar este documento?')">
-            <i class="bi bi-x-circle"></i> Rechazar
-          </button>
         </form>
       </div>
 
     {% else %}
       <div class="sindi-card h-100">
-        <p class="text-secondary">No tienes permiso para confirmar o rechazar documentos.</p>
+        <div class="text-secondary">
+          <i class="bi bi-lock"></i> No tienes permiso para confirmar o rechazar este documento.
+          Contacta a un administrador o tesorero para que lo gestione.
+        </div>
       </div>
     {% endif %}
   </div>
 
 </div>
+
+{% if puede_revisar and documento.estado != 'CONFIRMADO' and documento.estado != 'RECHAZADO' %}
+<!-- Modal Bootstrap de rechazo -->
+<div class="modal fade" id="modalRechazo" tabindex="-1" aria-labelledby="modalRechazoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 16px; border: 1px solid var(--sindi-border);">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="modalRechazoLabel">
+          <i class="bi bi-x-circle-fill text-danger"></i> Rechazar documento
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="post" action="{% url 'core:sindiapp_documento_rechazar' documento.pk %}" id="form-rechazar">
+        {% csrf_token %}
+        <div class="modal-body pt-2">
+          <p class="text-secondary small mb-3">Esta acción no creará ningún movimiento y no se puede deshacer.</p>
+          <label class="form-label fw-bold">Motivo del rechazo <span class="text-danger">*</span></label>
+          <textarea name="motivo" class="form-control" rows="3" required maxlength="300"
+                    placeholder="Ej: documento ilegible, datos incorrectos, archivo duplicado…"></textarea>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger sindi-cta">
+            <i class="bi bi-x-circle"></i> Confirmar rechazo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

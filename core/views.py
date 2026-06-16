@@ -3712,6 +3712,11 @@ class DocumentoSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMi
         context = super().get_context_data(**kwargs)
         context['estados'] = DocumentoSindicato.ESTADO_CHOICES
         context['puede_subir'] = self._check_permiso('documentos_subir')
+        base_qs = self.filtrar_por_tenant(DocumentoSindicato.objects.all())
+        context['conteos'] = {
+            estado: base_qs.filter(estado=estado).count()
+            for estado, _ in DocumentoSindicato.ESTADO_CHOICES
+        }
         return context
 
 
@@ -3736,6 +3741,10 @@ class DocumentoSindicatoSubirView(SindicatoTenantMixin, SindicatoRolePermissionM
         ext = '.' + archivo.name.rsplit('.', 1)[-1].lower() if '.' in archivo.name else ''
         if ext not in EXTENSIONES_PERMITIDAS:
             messages.error(request, f'Formato no permitido ({ext}). Usa PDF, JPG o PNG.')
+            return render(request, self.template_name)
+
+        if archivo.size > 10 * 1024 * 1024:
+            messages.error(request, 'El archivo supera el límite de 10 MB.')
             return render(request, self.template_name)
 
         tipo_map = {'.pdf': 'PDF', '.jpg': 'JPG', '.jpeg': 'JPG', '.png': 'PNG'}
@@ -3764,7 +3773,7 @@ class DocumentoSindicatoSubirView(SindicatoTenantMixin, SindicatoRolePermissionM
                 accion='SUBIR_DOCUMENTO',
                 entidad='DocumentoSindicato',
                 entidad_id=str(documento.id),
-                resumen=f'Documento subido y procesado: {archivo.name} | proveedor={datos.confianza}',
+                resumen=f'Documento subido y procesado: {archivo.name} | confianza={datos.confianza}',
             )
         except Exception as exc:
             documento.estado = DocumentoSindicato.ESTADO_ERROR
@@ -3809,6 +3818,18 @@ class DocumentoSindicatoRevisarView(SindicatoTenantMixin, SindicatoRolePermissio
             TipoBeneficioSindicato.objects.filter(estado=TipoBeneficioSindicato.ESTADO_ACTIVO)
         )
         context['socios'] = self.filtrar_por_tenant(SocioSindicato.objects.all()).order_by('nombre')
+        context['labels_ocr'] = {
+            'rut': 'RUT del emisor',
+            'nombre': 'Nombre del emisor',
+            'tipo_documento': 'Tipo de documento',
+            'numero_documento': 'Número de documento',
+            'fecha': 'Fecha',
+            'monto_neto': 'Monto neto',
+            'iva': 'IVA',
+            'total': 'Total',
+            'beneficio_sugerido': 'Beneficio sugerido',
+            'observaciones': 'Observaciones',
+        }
         return context
 
 
@@ -3852,9 +3873,24 @@ class DocumentoSindicatoConfirmarView(SindicatoTenantMixin, SindicatoRolePermiss
             errores.append('Monto debe ser un número entero mayor a cero.')
 
         if errores:
+            from .services.sindicato_ocr import DatosExtraidos
             for e in errores:
                 messages.error(request, e)
-            return redirect(reverse('core:sindiapp_documento_revisar', args=[pk]))
+            doc = get_object_or_404(
+                self.filtrar_por_tenant(
+                    DocumentoSindicato.objects.select_related('subido_por', 'revisado_por', 'movimiento_creado', 'empresa')
+                ), pk=pk
+            )
+            return render(request, 'core/sindiapp/documento_revisar.html', {
+                'documento': doc,
+                'datos': DatosExtraidos.from_dict(doc.datos_extraidos),
+                'puede_revisar': True,
+                'beneficios': self.filtrar_por_tenant(
+                    TipoBeneficioSindicato.objects.filter(estado=TipoBeneficioSindicato.ESTADO_ACTIVO)
+                ),
+                'socios': self.filtrar_por_tenant(SocioSindicato.objects.all()).order_by('nombre'),
+                'form_post': request.POST,
+            })
 
         empresa = self.get_empresa_usuario()
         socio = get_object_or_404(self.filtrar_por_tenant(SocioSindicato.objects.all()), pk=socio_id)
@@ -3919,6 +3955,9 @@ class DocumentoSindicatoRechazarView(SindicatoTenantMixin, SindicatoRolePermissi
         documento = get_object_or_404(qs, pk=pk)
 
         motivo = request.POST.get('motivo', '').strip()
+        if not motivo:
+            messages.error(request, 'Debes indicar el motivo del rechazo.')
+            return redirect(reverse('core:sindiapp_documento_revisar', args=[pk]))
 
         documento.estado = DocumentoSindicato.ESTADO_RECHAZADO
         documento.revisado_por = request.user
