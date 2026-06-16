@@ -30,7 +30,7 @@ from .models import (
     MetaVentas, Comision, Seguimiento, UserProfile, CampoPersonalizado,
     Empresa, SocioSindicato, TipoBeneficioSindicato, MovimientoSindicato,
     ConsolidadoMensualSindicato, ConsolidadoDetalleSindicato,
-    AuditoriaSindicato, AlertaSindicato,
+    AuditoriaSindicato, AlertaSindicato, DocumentoSindicato,
 )
 from .mixins import (
     AdminOnlyMixin, EjecutivoOrAdminMixin, ManagerOnlyMixin,
@@ -2167,6 +2167,12 @@ class SindicatoRolePermissionMixin:
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
         if permiso == 'alertas_editar':
             return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
+        if permiso == 'documentos_ver':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user) or _es_dirigente_sindicato(user)
+        if permiso == 'documentos_subir':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
+        if permiso == 'documentos_revisar':
+            return _es_admin_sindicato(user) or _es_tesoreria_sindicato(user)
         return False
 
     def dispatch(self, request, *args, **kwargs):
@@ -2207,6 +2213,8 @@ class SocioSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin,
                 'montos_por_beneficio': [],
                 'observaciones': [],
                 'historial_periodos': [],
+                'gas_movimientos_detalle': [],
+                'telefonia_movimientos_detalle': [],
             }
         )
 
@@ -2243,6 +2251,50 @@ class SocioSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin,
             .annotate(total=Sum('monto'))
             .order_by('-periodo')[:6]
         )
+
+        gas_movs = (
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .filter(fuente=MovimientoSindicato.FUENTE_GAS)
+            .order_by('-periodo', '-created_at')
+        )
+        gas_detalle = []
+        for mov in gas_movs:
+            source_columns = (mov.metadata_fuente or {}).get('source_columns', {})
+            gas_detalle.append(
+                {
+                    'periodo': mov.periodo,
+                    'beneficio': mov.tipo_beneficio.nombre,
+                    'vale_de_gas': source_columns.get('vale_de_gas') or '-',
+                    'site': source_columns.get('site') or '-',
+                    'monto': mov.monto,
+                    'referencia': mov.referencia_externa or '-',
+                }
+            )
+        context['gas_movimientos_detalle'] = gas_detalle
+
+        tel_movs = (
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .filter(fuente=MovimientoSindicato.FUENTE_TELEFONIA)
+            .order_by('-periodo', '-created_at')
+        )
+        tel_detalle = []
+        for mov in tel_movs:
+            source_columns = (mov.metadata_fuente or {}).get('source_columns', {})
+            tel_detalle.append(
+                {
+                    'periodo': mov.periodo,
+                    'beneficio': mov.tipo_beneficio.nombre,
+                    'rut_fuente': source_columns.get('rut') or socio.rut,
+                    'nombre_fuente': source_columns.get('razon_social') or '-',
+                    'cuenta': source_columns.get('cuenta') or '-',
+                    'pcs': source_columns.get('pcs') or '-',
+                    'fecha_entrega': source_columns.get('fecha_entrega') or source_columns.get('fecha_de_entrega') or '-',
+                    'cargo_fijo': source_columns.get('cargo_fijo') or mov.monto,
+                    'monto': mov.monto,
+                    'referencia': mov.referencia_externa or '-',
+                }
+            )
+        context['telefonia_movimientos_detalle'] = tel_detalle
         return context
 
 
@@ -2666,6 +2718,13 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                     'rut': rut,
                     'nombre': nombre,
                     'monto': str(monto.quantize(Decimal('1'))),
+                    'fuente': row.source,
+                    'cuenta': (row.source_columns or {}).get('cuenta') or '-',
+                    'pcs': (row.source_columns or {}).get('pcs') or '-',
+                    'fecha_entrega': (row.source_columns or {}).get('fecha_entrega') or '-',
+                    'cargo_fijo': (row.source_columns or {}).get('cargo_fijo') or '-',
+                    'vale_de_gas': (row.source_columns or {}).get('vale_de_gas') or '-',
+                    'site': (row.source_columns or {}).get('site') or '-',
                     'estado': 'VALIDA',
                     'motivo': 'OK' if estado_socio == 'SOCIO_EXISTENTE' else 'Se creará socio mínimo.',
                 }
@@ -2960,6 +3019,8 @@ class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixi
                 'montos_por_beneficio': [],
                 'observaciones': [],
                 'historial_periodos': [],
+                'gas_movimientos_detalle': [],
+                'telefonia_movimientos_detalle': [],
                 'socios_tabla': socios_tabla,
                 'socios_page_obj': socios_page_obj,
             }
@@ -2998,6 +3059,50 @@ class ConsultaRutSindicatoView(SindicatoTenantMixin, SindicatoRolePermissionMixi
             .annotate(total=Sum('monto'))
             .order_by('-periodo')[:6]
         )
+
+        gas_movs = (
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .filter(fuente=MovimientoSindicato.FUENTE_GAS)
+            .order_by('-periodo', '-created_at')
+        )
+        gas_detalle = []
+        for mov in gas_movs:
+            source_columns = (mov.metadata_fuente or {}).get('source_columns', {})
+            gas_detalle.append(
+                {
+                    'periodo': mov.periodo,
+                    'beneficio': mov.tipo_beneficio.nombre,
+                    'vale_de_gas': source_columns.get('vale_de_gas') or '-',
+                    'site': source_columns.get('site') or '-',
+                    'monto': mov.monto,
+                    'referencia': mov.referencia_externa or '-',
+                }
+            )
+        context['gas_movimientos_detalle'] = gas_detalle
+
+        tel_movs = (
+            movs.exclude(estado=MovimientoSindicato.ESTADO_RECHAZADO)
+            .filter(fuente=MovimientoSindicato.FUENTE_TELEFONIA)
+            .order_by('-periodo', '-created_at')
+        )
+        tel_detalle = []
+        for mov in tel_movs:
+            source_columns = (mov.metadata_fuente or {}).get('source_columns', {})
+            tel_detalle.append(
+                {
+                    'periodo': mov.periodo,
+                    'beneficio': mov.tipo_beneficio.nombre,
+                    'rut_fuente': source_columns.get('rut') or socio.rut,
+                    'nombre_fuente': source_columns.get('razon_social') or '-',
+                    'cuenta': source_columns.get('cuenta') or '-',
+                    'pcs': source_columns.get('pcs') or '-',
+                    'fecha_entrega': source_columns.get('fecha_entrega') or source_columns.get('fecha_de_entrega') or '-',
+                    'cargo_fijo': source_columns.get('cargo_fijo') or mov.monto,
+                    'monto': mov.monto,
+                    'referencia': mov.referencia_externa or '-',
+                }
+            )
+        context['telefonia_movimientos_detalle'] = tel_detalle
         return context
 
 
@@ -3354,12 +3459,29 @@ class SindiAppAuditoriaListView(SindicatoTenantMixin, SindicatoRolePermissionMix
     permiso_ver = 'consolidado_ver'
     login_url = 'core:sindiapp_login'
 
+    ACCIONES_DISPONIBLES = [
+        ('IMPORTAR_MOVIMIENTOS', 'Importación de movimientos'),
+        ('GENERAR_CONSOLIDADO', 'Generación de consolidado'),
+        ('RECALCULAR_CONSOLIDADO', 'Recálculo de consolidado'),
+        ('PREVALIDAR_CONSOLIDADO', 'Prevalidación de consolidado'),
+        ('CERRAR_CONSOLIDADO', 'Cierre de período'),
+        ('EXPORTAR_CONSOLIDADO', 'Exportación a Excel'),
+    ]
+
     def get_queryset(self):
         qs = self.filtrar_por_tenant(AuditoriaSindicato.objects.select_related('usuario', 'empresa'))
         periodo = self.request.GET.get('periodo', '').strip()
         if periodo:
             qs = qs.filter(periodo=periodo)
+        accion = self.request.GET.get('accion', '').strip()
+        if accion:
+            qs = qs.filter(accion=accion)
         return qs.order_by('-created_at')[:300]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['acciones_disponibles'] = self.ACCIONES_DISPONIBLES
+        return context
 
 
 class SindiAppSocioSindicatoListView(SocioSindicatoListView):
@@ -3556,7 +3678,264 @@ class AdminRedirectView(View):
 
 class LogoutView(DjangoLogoutView):
     next_page = "core:login"
-    
+
     def get(self, request, *args, **kwargs):
         """Allow GET requests for logout (in addition to POST)"""
         return self.post(request, *args, **kwargs)
+
+
+# ==================== DOCUMENTOS SINDICATO (OCR) ====================
+
+EXTENSIONES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png'}
+TIPOS_MIME_PERMITIDOS = {
+    'application/pdf', 'image/jpeg', 'image/png', 'image/jpg',
+}
+
+
+class DocumentoSindicatoListView(SindicatoTenantMixin, SindicatoRolePermissionMixin, ListView):
+    model = DocumentoSindicato
+    template_name = 'core/sindiapp/documento_list.html'
+    context_object_name = 'documentos'
+    permiso_ver = 'documentos_ver'
+    login_url = 'core:sindiapp_login'
+
+    def get_queryset(self):
+        qs = self.filtrar_por_tenant(
+            DocumentoSindicato.objects.select_related('subido_por', 'revisado_por', 'movimiento_creado')
+        )
+        estado = self.request.GET.get('estado', '').strip()
+        if estado:
+            qs = qs.filter(estado=estado)
+        return qs.order_by('-created_at')[:200]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['estados'] = DocumentoSindicato.ESTADO_CHOICES
+        context['puede_subir'] = self._check_permiso('documentos_subir')
+        return context
+
+
+class DocumentoSindicatoSubirView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    template_name = 'core/sindiapp/documento_subir.html'
+    permiso_ver = 'documentos_subir'
+    permiso_editar = 'documentos_subir'
+    login_url = 'core:sindiapp_login'
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name)
+
+    def post(self, request, *args, **kwargs):
+        from .services.sindicato_ocr import procesar_documento, DatosExtraidos
+        from django.utils import timezone
+
+        archivo = request.FILES.get('archivo')
+        if not archivo:
+            messages.error(request, 'Debes seleccionar un archivo.')
+            return render(request, self.template_name)
+
+        ext = '.' + archivo.name.rsplit('.', 1)[-1].lower() if '.' in archivo.name else ''
+        if ext not in EXTENSIONES_PERMITIDAS:
+            messages.error(request, f'Formato no permitido ({ext}). Usa PDF, JPG o PNG.')
+            return render(request, self.template_name)
+
+        tipo_map = {'.pdf': 'PDF', '.jpg': 'JPG', '.jpeg': 'JPG', '.png': 'PNG'}
+        tipo = tipo_map.get(ext, 'PDF')
+
+        empresa = self.get_empresa_usuario()
+        documento = DocumentoSindicato.objects.create(
+            empresa=empresa,
+            subido_por=request.user,
+            archivo=archivo,
+            nombre_archivo=archivo.name,
+            tipo_archivo=tipo,
+            estado=DocumentoSindicato.ESTADO_SUBIDO,
+        )
+
+        try:
+            texto, datos = procesar_documento(documento.archivo.path)
+            documento.texto_extraido = texto
+            documento.datos_extraidos = datos.to_dict()
+            documento.estado = DocumentoSindicato.ESTADO_EN_REVISION
+            documento.save(update_fields=['texto_extraido', 'datos_extraidos', 'estado', 'updated_at'])
+
+            AuditoriaSindicato.objects.create(
+                empresa=empresa,
+                usuario=request.user,
+                accion='SUBIR_DOCUMENTO',
+                entidad='DocumentoSindicato',
+                entidad_id=str(documento.id),
+                resumen=f'Documento subido y procesado: {archivo.name} | proveedor={datos.confianza}',
+            )
+        except Exception as exc:
+            documento.estado = DocumentoSindicato.ESTADO_ERROR
+            documento.error_mensaje = str(exc)
+            documento.save(update_fields=['estado', 'error_mensaje', 'updated_at'])
+
+            AuditoriaSindicato.objects.create(
+                empresa=empresa,
+                usuario=request.user,
+                accion='SUBIR_DOCUMENTO',
+                entidad='DocumentoSindicato',
+                entidad_id=str(documento.id),
+                resumen=f'Error OCR al procesar {archivo.name}: {str(exc)[:200]}',
+            )
+            messages.error(request, f'Error al procesar el documento: {exc}')
+            return redirect(reverse('core:sindiapp_documento_revisar', args=[documento.pk]))
+
+        return redirect(reverse('core:sindiapp_documento_revisar', args=[documento.pk]))
+
+
+class DocumentoSindicatoRevisarView(SindicatoTenantMixin, SindicatoRolePermissionMixin, DetailView):
+    model = DocumentoSindicato
+    template_name = 'core/sindiapp/documento_revisar.html'
+    context_object_name = 'documento'
+    permiso_ver = 'documentos_ver'
+    login_url = 'core:sindiapp_login'
+
+    def get_queryset(self):
+        return self.filtrar_por_tenant(
+            DocumentoSindicato.objects.select_related(
+                'subido_por', 'revisado_por', 'movimiento_creado', 'empresa'
+            )
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from .services.sindicato_ocr import DatosExtraidos
+        doc = self.object
+        context['datos'] = DatosExtraidos.from_dict(doc.datos_extraidos)
+        context['puede_revisar'] = self._check_permiso('documentos_revisar')
+        context['beneficios'] = self.filtrar_por_tenant(
+            TipoBeneficioSindicato.objects.filter(estado=TipoBeneficioSindicato.ESTADO_ACTIVO)
+        )
+        context['socios'] = self.filtrar_por_tenant(SocioSindicato.objects.all()).order_by('nombre')
+        return context
+
+
+class DocumentoSindicatoConfirmarView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'documentos_revisar'
+    permiso_editar = 'documentos_revisar'
+    login_url = 'core:sindiapp_login'
+
+    def post(self, request, pk, *args, **kwargs):
+        from django.utils import timezone
+
+        qs = self.filtrar_por_tenant(DocumentoSindicato.objects.all())
+        documento = get_object_or_404(qs, pk=pk)
+
+        if documento.estado not in (
+            DocumentoSindicato.ESTADO_EN_REVISION,
+            DocumentoSindicato.ESTADO_PROCESADO,
+            DocumentoSindicato.ESTADO_ERROR,
+        ):
+            messages.error(request, 'El documento no está en estado revisable.')
+            return redirect(reverse('core:sindiapp_documento_revisar', args=[pk]))
+
+        socio_id = request.POST.get('socio')
+        beneficio_id = request.POST.get('tipo_beneficio')
+        periodo = request.POST.get('periodo', '').strip()
+        monto_raw = request.POST.get('monto', '').strip().replace('.', '').replace(',', '')
+        observacion = request.POST.get('observacion', '').strip()
+
+        errores = []
+        if not socio_id:
+            errores.append('Debes seleccionar el socio.')
+        if not beneficio_id:
+            errores.append('Debes seleccionar el tipo de beneficio.')
+        if not periodo or not re.match(r'^\d{4}-(0[1-9]|1[0-2])$', periodo):
+            errores.append('Período inválido (usa formato YYYY-MM).')
+        try:
+            monto = int(monto_raw)
+            if monto <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            errores.append('Monto debe ser un número entero mayor a cero.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            return redirect(reverse('core:sindiapp_documento_revisar', args=[pk]))
+
+        empresa = self.get_empresa_usuario()
+        socio = get_object_or_404(self.filtrar_por_tenant(SocioSindicato.objects.all()), pk=socio_id)
+        beneficio = get_object_or_404(
+            self.filtrar_por_tenant(TipoBeneficioSindicato.objects.all()), pk=beneficio_id
+        )
+
+        movimiento = MovimientoSindicato.objects.create(
+            empresa=empresa,
+            socio=socio,
+            tipo_beneficio=beneficio,
+            periodo=periodo,
+            monto=monto,
+            estado=MovimientoSindicato.ESTADO_PENDIENTE,
+            fuente=MovimientoSindicato.FUENTE_DOCUMENTO,
+            observacion=observacion or f'Creado desde documento OCR #{documento.pk}',
+            referencia_externa=f'DOC-{documento.pk}',
+            creado_por=request.user,
+            metadata_fuente={
+                'documento_id': documento.pk,
+                'nombre_archivo': documento.nombre_archivo,
+                'imported_by': request.user.username,
+            },
+        )
+
+        documento.movimiento_creado = movimiento
+        documento.estado = DocumentoSindicato.ESTADO_CONFIRMADO
+        documento.revisado_por = request.user
+        documento.fecha_revision = timezone.now()
+        documento.observacion_revision = observacion
+        documento.save(update_fields=[
+            'movimiento_creado', 'estado', 'revisado_por',
+            'fecha_revision', 'observacion_revision', 'updated_at',
+        ])
+
+        AuditoriaSindicato.objects.create(
+            empresa=empresa,
+            usuario=request.user,
+            accion='CONFIRMAR_DOCUMENTO',
+            entidad='DocumentoSindicato',
+            entidad_id=str(documento.pk),
+            periodo=periodo,
+            resumen=(
+                f'Documento confirmado → Movimiento #{movimiento.pk} | '
+                f'socio={socio.rut} | benef={beneficio.nombre} | monto={monto}'
+            ),
+        )
+
+        messages.success(request, f'Movimiento creado correctamente (#{movimiento.pk}).')
+        return redirect(reverse('core:sindiapp_documento_list'))
+
+
+class DocumentoSindicatoRechazarView(SindicatoTenantMixin, SindicatoRolePermissionMixin, View):
+    permiso_ver = 'documentos_revisar'
+    permiso_editar = 'documentos_revisar'
+    login_url = 'core:sindiapp_login'
+
+    def post(self, request, pk, *args, **kwargs):
+        from django.utils import timezone
+
+        qs = self.filtrar_por_tenant(DocumentoSindicato.objects.all())
+        documento = get_object_or_404(qs, pk=pk)
+
+        motivo = request.POST.get('motivo', '').strip()
+
+        documento.estado = DocumentoSindicato.ESTADO_RECHAZADO
+        documento.revisado_por = request.user
+        documento.fecha_revision = timezone.now()
+        documento.observacion_revision = motivo
+        documento.save(update_fields=[
+            'estado', 'revisado_por', 'fecha_revision', 'observacion_revision', 'updated_at',
+        ])
+
+        AuditoriaSindicato.objects.create(
+            empresa=self.get_empresa_usuario(),
+            usuario=request.user,
+            accion='RECHAZAR_DOCUMENTO',
+            entidad='DocumentoSindicato',
+            entidad_id=str(documento.pk),
+            resumen=f'Documento rechazado: {documento.nombre_archivo} | motivo={motivo[:100]}',
+        )
+
+        messages.warning(request, 'Documento rechazado. No se creó movimiento.')
+        return redirect(reverse('core:sindiapp_documento_list'))

@@ -1,0 +1,105 @@
+{% extends 'core/sindiapp/base.html' %}
+{% block title %}SindiApp | Documentos{% endblock %}
+{% block page_title %}Documentos OCR{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-3">
+  {% for valor, etiqueta in estados %}
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="sindi-card h-100 text-center py-2">
+      <div class="sindi-card-title">{{ etiqueta }}</div>
+      <div class="sindi-kpi-value" style="font-size:22px;">
+        {{ documentos|length }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="sindi-card mb-3">
+  <div class="sindi-toolbar">
+    <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
+      <div>
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="estado">
+          <option value="">Todos</option>
+          {% for valor, etiqueta in estados %}
+            <option value="{{ valor }}" {% if request.GET.estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="d-grid">
+        <button class="btn btn-outline-primary sindi-cta" type="submit">Filtrar</button>
+      </div>
+      {% if request.GET.estado %}
+        <a class="btn btn-sm btn-outline-secondary align-self-end" href="{% url 'core:sindiapp_documento_list' %}">Limpiar</a>
+      {% endif %}
+    </form>
+    {% if puede_subir %}
+    <a class="btn btn-primary sindi-cta" href="{% url 'core:sindiapp_documento_subir' %}">
+      <i class="bi bi-file-earmark-arrow-up"></i> Subir documento
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="sindi-card">
+  <div class="sindi-table-wrap table-responsive">
+    <table class="table sindi-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Archivo</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th>Subido por</th>
+          <th>Movimiento</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in documentos %}
+        <tr>
+          <td class="text-nowrap">{{ doc.created_at|date:'d-m-Y H:i' }}</td>
+          <td>
+            <span class="fw-semibold">{{ doc.nombre_archivo }}</span>
+          </td>
+          <td><span class="sindi-badge sindi-badge-info">{{ doc.tipo_archivo }}</span></td>
+          <td>
+            {% if doc.estado == 'CONFIRMADO' %}
+              <span class="sindi-badge sindi-badge-success"><i class="bi bi-check-circle-fill"></i> Confirmado</span>
+            {% elif doc.estado == 'RECHAZADO' %}
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-x-circle-fill"></i> Rechazado</span>
+            {% elif doc.estado == 'EN_REVISION' %}
+              <span class="sindi-badge sindi-badge-accent"><i class="bi bi-eye-fill"></i> En revisión</span>
+            {% elif doc.estado == 'ERROR' %}
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error</span>
+            {% elif doc.estado == 'PROCESADO' %}
+              <span class="sindi-badge sindi-badge-info"><i class="bi bi-cpu-fill"></i> Procesado</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-info"><i class="bi bi-upload"></i> Subido</span>
+            {% endif %}
+          </td>
+          <td>{{ doc.subido_por.username|default:'-' }}</td>
+          <td>
+            {% if doc.movimiento_creado %}
+              <span class="sindi-badge sindi-badge-success">Mov #{{ doc.movimiento_creado.pk }}</span>
+            {% else %}
+              <span class="text-secondary">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:sindiapp_documento_revisar' doc.pk %}">
+              <i class="bi bi-eye"></i> Revisar
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-secondary">Sin documentos para los filtros seleccionados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="small text-secondary mt-2 px-1">Mostrando hasta los últimos 200 documentos.</div>
+</div>
+{% endblock %}

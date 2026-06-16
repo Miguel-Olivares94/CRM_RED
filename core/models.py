@@ -724,10 +724,12 @@ class MovimientoSindicato(BaseModel):
     FUENTE_GAS = 'GAS'
     FUENTE_TELEFONIA = 'TELEFONIA'
     FUENTE_COPEUCH = 'COPEUCH'
+    FUENTE_DOCUMENTO = 'DOCUMENTO'
     FUENTE_CHOICES = [
         (FUENTE_GAS, 'Gas'),
         (FUENTE_TELEFONIA, 'Telefonia'),
         (FUENTE_COPEUCH, 'Copeuch'),
+        (FUENTE_DOCUMENTO, 'Documento OCR'),
     ]
 
     empresa = models.ForeignKey(
@@ -1032,3 +1034,91 @@ class ConsolidadoDetalleSindicato(BaseModel):
 
     def __str__(self):
         return f"{self.consolidado.periodo} | {self.socio} | {self.tipo_beneficio.nombre}"
+
+
+class DocumentoSindicato(BaseModel):
+    """Documentos cargados para extracción OCR y creación de movimientos."""
+
+    TIPO_PDF = 'PDF'
+    TIPO_JPG = 'JPG'
+    TIPO_PNG = 'PNG'
+    TIPO_CHOICES = [
+        (TIPO_PDF, 'PDF'),
+        (TIPO_JPG, 'JPG'),
+        (TIPO_PNG, 'PNG'),
+    ]
+
+    ESTADO_SUBIDO = 'SUBIDO'
+    ESTADO_PROCESADO = 'PROCESADO'
+    ESTADO_EN_REVISION = 'EN_REVISION'
+    ESTADO_CONFIRMADO = 'CONFIRMADO'
+    ESTADO_RECHAZADO = 'RECHAZADO'
+    ESTADO_ERROR = 'ERROR'
+    ESTADO_CHOICES = [
+        (ESTADO_SUBIDO, 'Subido'),
+        (ESTADO_PROCESADO, 'Procesado'),
+        (ESTADO_EN_REVISION, 'En revisión'),
+        (ESTADO_CONFIRMADO, 'Confirmado'),
+        (ESTADO_RECHAZADO, 'Rechazado'),
+        (ESTADO_ERROR, 'Error'),
+    ]
+
+    empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        related_name='documentos_sindicato',
+        verbose_name='Empresa (tenant)',
+    )
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documentos_sindicato_subidos',
+        verbose_name='Subido por',
+    )
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documentos_sindicato_revisados',
+        verbose_name='Revisado por',
+    )
+    movimiento_creado = models.OneToOneField(
+        'MovimientoSindicato',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documento_origen',
+        verbose_name='Movimiento creado',
+    )
+    archivo = models.FileField(
+        upload_to='sindicato/documentos/%Y/%m/',
+        verbose_name='Archivo',
+    )
+    nombre_archivo = models.CharField(max_length=255, verbose_name='Nombre archivo')
+    tipo_archivo = models.CharField(max_length=5, choices=TIPO_CHOICES, verbose_name='Tipo archivo')
+    estado = models.CharField(
+        max_length=15,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_SUBIDO,
+        verbose_name='Estado',
+    )
+    texto_extraido = models.TextField(blank=True, default='', verbose_name='Texto extraído')
+    datos_extraidos = models.JSONField(default=dict, blank=True, verbose_name='Datos extraídos')
+    error_mensaje = models.TextField(blank=True, default='', verbose_name='Mensaje de error')
+    observacion_revision = models.TextField(blank=True, default='', verbose_name='Observación revisión')
+    fecha_revision = models.DateTimeField(null=True, blank=True, verbose_name='Fecha revisión')
+
+    class Meta:
+        verbose_name = 'Documento Sindicato'
+        verbose_name_plural = 'Documentos Sindicato'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre_archivo} | {self.empresa} | {self.get_estado_display()}"

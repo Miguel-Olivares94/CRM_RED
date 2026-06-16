@@ -287,6 +287,7 @@
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_consulta_rut' %}active{% endif %}" href="{% url 'core:sindiapp_consulta_rut' %}"><i class="bi bi-search"></i> Consulta por RUT</a></li>
         <li class="nav-item"><a class="nav-link {% if 'sindiapp_consolidado' in request.resolver_match.url_name or request.resolver_match.url_name == 'sindiapp_exportacion_list' %}active{% endif %}" href="{% url 'core:sindiapp_consolidado_historial' %}"><i class="bi bi-table"></i> Consolidados</a></li>
         <li class="nav-item"><a class="nav-link {% if 'sindiapp_alerta' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_alerta_list' %}"><i class="bi bi-bell"></i> Alertas</a></li>
+        <li class="nav-item"><a class="nav-link {% if 'sindiapp_documento' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'core:sindiapp_documento_list' %}"><i class="bi bi-file-earmark-text"></i> Documentos</a></li>
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'sindiapp_auditoria_list' %}active{% endif %}" href="{% url 'core:sindiapp_auditoria_list' %}"><i class="bi bi-clipboard-data"></i> Auditoría</a></li>
       </ul>
     </aside>

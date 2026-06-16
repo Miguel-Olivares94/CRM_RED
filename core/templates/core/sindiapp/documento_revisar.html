@@ -1,0 +1,191 @@
+{% extends 'core/sindiapp/base.html' %}
+{% block title %}SindiApp | Revisar Documento{% endblock %}
+{% block page_title %}Revisión de documento{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="sindi-card">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">{{ documento.nombre_archivo }}</h5>
+          <div class="d-flex gap-2 flex-wrap">
+            <span class="sindi-badge sindi-badge-info">{{ documento.tipo_archivo }}</span>
+            {% if documento.estado == 'CONFIRMADO' %}
+              <span class="sindi-badge sindi-badge-success"><i class="bi bi-check-circle-fill"></i> Confirmado</span>
+            {% elif documento.estado == 'RECHAZADO' %}
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-x-circle-fill"></i> Rechazado</span>
+            {% elif documento.estado == 'EN_REVISION' %}
+              <span class="sindi-badge sindi-badge-accent"><i class="bi bi-eye-fill"></i> En revisión</span>
+            {% elif documento.estado == 'ERROR' %}
+              <span class="sindi-badge sindi-badge-danger"><i class="bi bi-exclamation-triangle-fill"></i> Error OCR</span>
+            {% else %}
+              <span class="sindi-badge sindi-badge-info">{{ documento.get_estado_display }}</span>
+            {% endif %}
+            <span class="sindi-badge sindi-badge-info">Subido {{ documento.created_at|date:'d-m-Y H:i' }}</span>
+          </div>
+        </div>
+        <a class="btn btn-outline-secondary sindi-cta" href="{% url 'core:sindiapp_documento_list' %}">
+          <i class="bi bi-arrow-left"></i> Volver
+        </a>
+      </div>
+
+      {% if documento.estado == 'ERROR' and documento.error_mensaje %}
+      <div class="alert alert-danger mt-3 mb-0">
+        <strong><i class="bi bi-exclamation-triangle-fill"></i> Error OCR:</strong> {{ documento.error_mensaje }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Datos extraídos -->
+  <div class="col-lg-6">
+    <div class="sindi-card h-100">
+      <h6 class="mb-3">
+        <i class="bi bi-cpu"></i> Datos extraídos por OCR
+        <span class="ms-2
+          {% if datos.confianza == 'ALTA' %}sindi-badge sindi-badge-success
+          {% elif datos.confianza == 'MEDIA' %}sindi-badge sindi-badge-accent
+          {% else %}sindi-badge sindi-badge-danger{% endif %}">
+          Confianza {{ datos.confianza }}
+        </span>
+      </h6>
+      <div class="row g-2">
+        {% with campos=datos.to_dict.items %}
+          {% for clave, valor in campos %}
+            {% if clave != 'confianza' %}
+            <div class="col-md-6">
+              <div class="sindi-card-title">{{ clave|capfirst|cut:"_" }}</div>
+              <div class="fw-semibold">{{ valor|default:"—" }}</div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        {% endwith %}
+      </div>
+      {% if documento.texto_extraido %}
+      <details class="mt-3">
+        <summary class="small text-secondary" style="cursor:pointer;">Ver texto extraído completo</summary>
+        <pre class="mt-2 p-2 bg-light rounded small" style="max-height:200px;overflow:auto;white-space:pre-wrap;">{{ documento.texto_extraido }}</pre>
+      </details>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Panel acción -->
+  <div class="col-lg-6">
+    {% if documento.estado == 'CONFIRMADO' %}
+      <div class="sindi-card h-100">
+        <h6><i class="bi bi-check-circle-fill text-success"></i> Documento ya confirmado</h6>
+        <p class="text-secondary">Este documento fue confirmado y generó el movimiento
+          <strong>#{{ documento.movimiento_creado.pk }}</strong>.</p>
+        <div class="mt-2">
+          <span class="sindi-card-title">Revisado por</span>
+          <div>{{ documento.revisado_por.username|default:'—' }}</div>
+        </div>
+        <div class="mt-2">
+          <span class="sindi-card-title">Observación</span>
+          <div>{{ documento.observacion_revision|default:'—' }}</div>
+        </div>
+      </div>
+
+    {% elif documento.estado == 'RECHAZADO' %}
+      <div class="sindi-card h-100">
+        <h6><i class="bi bi-x-circle-fill text-danger"></i> Documento rechazado</h6>
+        <div class="mt-2">
+          <span class="sindi-card-title">Motivo</span>
+          <div>{{ documento.observacion_revision|default:'Sin motivo registrado' }}</div>
+        </div>
+        <div class="mt-2">
+          <span class="sindi-card-title">Rechazado por</span>
+          <div>{{ documento.revisado_por.username|default:'—' }}</div>
+        </div>
+      </div>
+
+    {% elif puede_revisar %}
+      <!-- Formulario de confirmación -->
+      <div class="sindi-card h-100">
+        <h6 class="mb-3"><i class="bi bi-pencil-square"></i> Completar y confirmar</h6>
+        <form method="post" action="{% url 'core:sindiapp_documento_confirmar' documento.pk %}" class="sindi-form-grid" id="form-confirmar">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">Socio <span class="text-danger">*</span></label>
+            <select class="form-select" name="socio" required>
+              <option value="">— Selecciona socio —</option>
+              {% for socio in socios %}
+                <option value="{{ socio.pk }}"
+                  {% if datos.rut and datos.rut in socio.rut %}selected{% endif %}>
+                  {{ socio.rut }} — {{ socio.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Tipo de beneficio <span class="text-danger">*</span></label>
+            <select class="form-select" name="tipo_beneficio" required>
+              <option value="">— Selecciona beneficio —</option>
+              {% for ben in beneficios %}
+                <option value="{{ ben.pk }}"
+                  {% if datos.beneficio_sugerido and datos.beneficio_sugerido|lower in ben.nombre|lower %}selected{% endif %}>
+                  {{ ben.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Período <span class="text-danger">*</span></label>
+              <input type="text" name="periodo" class="form-control"
+                     placeholder="YYYY-MM" required maxlength="7">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Monto ($) <span class="text-danger">*</span></label>
+              <input type="number" name="monto" class="form-control"
+                     min="1" step="1" required
+                     value="{{ datos.total|default:'' }}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Observación</label>
+            <input type="text" name="observacion" class="form-control" maxlength="300">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success sindi-cta">
+              <i class="bi bi-check-circle"></i> Confirmar y crear movimiento
+            </button>
+          </div>
+        </form>
+
+        <hr>
+
+        <!-- Formulario de rechazo -->
+        <form method="post" action="{% url 'core:sindiapp_documento_rechazar' documento.pk %}" id="form-rechazar">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label">Motivo del rechazo</label>
+            <input type="text" name="motivo" class="form-control" maxlength="300"
+                   placeholder="Ej: documento ilegible, datos incorrectos…">
+          </div>
+          <button type="submit" class="btn btn-outline-danger sindi-cta"
+                  onclick="return confirm('¿Confirmas que deseas rechazar este documento?')">
+            <i class="bi bi-x-circle"></i> Rechazar
+          </button>
+        </form>
+      </div>
+
+    {% else %}
+      <div class="sindi-card h-100">
+        <p class="text-secondary">No tienes permiso para confirmar o rechazar documentos.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

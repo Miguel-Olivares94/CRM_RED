@@ -63,6 +63,11 @@ from .views import (
     SindiAppAuditoriaListView,
     SindiAppAlertaSindicatoListView,
     SindiAppAlertaSindicatoAccionView,
+    DocumentoSindicatoListView,
+    DocumentoSindicatoSubirView,
+    DocumentoSindicatoRevisarView,
+    DocumentoSindicatoConfirmarView,
+    DocumentoSindicatoRechazarView,
 )
 from .views import api_comunas
 from .views_ai import AuditarOportunidadView, PrepararContactoView, SugerirEstrategiaView
@@ -162,6 +167,11 @@ urlpatterns = [
     path('sindiapp/alertas/', SindiAppAlertaSindicatoListView.as_view(), name='sindiapp_alerta_list'),
     path('sindiapp/alertas/<int:pk>/<str:accion>/', SindiAppAlertaSindicatoAccionView.as_view(), name='sindiapp_alerta_accion'),
     path('sindiapp/auditoria/', SindiAppAuditoriaListView.as_view(), name='sindiapp_auditoria_list'),
+    path('sindiapp/documentos/', DocumentoSindicatoListView.as_view(), name='sindiapp_documento_list'),
+    path('sindiapp/documentos/subir/', DocumentoSindicatoSubirView.as_view(), name='sindiapp_documento_subir'),
+    path('sindiapp/documentos/<int:pk>/revisar/', DocumentoSindicatoRevisarView.as_view(), name='sindiapp_documento_revisar'),
+    path('sindiapp/documentos/<int:pk>/confirmar/', DocumentoSindicatoConfirmarView.as_view(), name='sindiapp_documento_confirmar'),
+    path('sindiapp/documentos/<int:pk>/rechazar/', DocumentoSindicatoRechazarView.as_view(), name='sindiapp_documento_rechazar'),
 
     # ── Módulo Sindicato MVP ─────────────────────────────────────────
     path('sindicato/socios/', SocioSindicatoListView.as_view(), name='sindicato_socio_list'),

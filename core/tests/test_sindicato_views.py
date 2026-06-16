@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -8,10 +9,16 @@ from django.urls import reverse
 
 from openpyxl import Workbook, load_workbook
 
+import tempfile
+import shutil
+
+from django.test import override_settings
+
 from core.models import (
     AlertaSindicato,
     AuditoriaSindicato,
     ConsolidadoMensualSindicato,
+    DocumentoSindicato,
     Empresa,
     MovimientoSindicato,
     SocioSindicato,
@@ -137,6 +144,94 @@ class SindicatoViewsTests(TestCase):
         self.assertIn('?rut=12345678-5', contenido)
         self.assertNotIn('11.111.111-1', contenido)
 
+    def test_consulta_rut_muestra_detalle_fuente_gas_con_vale(self):
+        periodo_actual = datetime.now().strftime('%Y-%m')
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo=periodo_actual,
+            monto=22222,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='GAS-RUT-1',
+            fuente=MovimientoSindicato.FUENTE_GAS,
+            metadata_fuente={'source_columns': {'vale_de_gas': '45 KG', 'site': 'SITE RUT'}},
+        )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindicato_consulta_rut'), {'rut': self.socio_a.rut})
+        self.assertEqual(resp.status_code, 200)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Detalle fuente Gas', contenido)
+        self.assertIn('45 KG', contenido)
+
+    def test_consulta_rut_muestra_detalle_fuente_telefonia(self):
+        periodo_actual = datetime.now().strftime('%Y-%m')
+        benef_tel = TipoBeneficioSindicato.objects.create(
+            empresa=self.empresa_a,
+            codigo='TELA',
+            nombre='Telefonia A',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=benef_tel,
+            periodo=periodo_actual,
+            monto=45678,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='TEL-RUT-1',
+            fuente=MovimientoSindicato.FUENTE_TELEFONIA,
+            metadata_fuente={
+                'source_columns': {
+                    'rut': '17.983.258-5',
+                    'razon_social': 'SOCIO TEL TEST',
+                    'cuenta': '99887766',
+                    'pcs': '2',
+                    'fecha_entrega': '2026-03-01',
+                    'cargo_fijo': '45678',
+                }
+            },
+        )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindicato_consulta_rut'), {'rut': self.socio_a.rut})
+        self.assertEqual(resp.status_code, 200)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Detalle fuente Telefonía', contenido)
+        self.assertIn('99887766', contenido)
+        self.assertIn('SOCIO TEL TEST', contenido)
+        self.assertIn('45678', contenido)
+
+    def test_consulta_rut_no_recorta_detalle_fuente_telefonia(self):
+        periodo_actual = datetime.now().strftime('%Y-%m')
+        benef_tel = TipoBeneficioSindicato.objects.create(
+            empresa=self.empresa_a,
+            codigo='TELB',
+            nombre='Telefonia B',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
+
+        for idx in range(25):
+            MovimientoSindicato.objects.create(
+                empresa=self.empresa_a,
+                socio=self.socio_a,
+                tipo_beneficio=benef_tel,
+                periodo=periodo_actual,
+                monto=1000 + idx,
+                estado=MovimientoSindicato.ESTADO_VALIDADO,
+                referencia_externa=f'TEL-RUT-{idx}',
+                fuente=MovimientoSindicato.FUENTE_TELEFONIA,
+                metadata_fuente={'source_columns': {'cuenta': f'9000{idx}', 'pcs': str(idx), 'fecha_entrega': '2026-03-01'}},
+            )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindicato_consulta_rut'), {'rut': self.socio_a.rut})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['telefonia_movimientos_detalle']), 25)
+
     def test_socio_list_muestra_ficha_rapida_por_rut(self):
         self.client.force_login(self.admin_a)
         resp = self.client.get(reverse('core:sindicato_socio_list'), {'rut': '12.345.678-5'})
@@ -146,6 +241,56 @@ class SindicatoViewsTests(TestCase):
         contenido = resp.content.decode('utf-8')
         self.assertIn('Ficha rápida del socio', contenido)
         self.assertIn('Editar perfil', contenido)
+
+    def test_socio_list_muestra_detalle_fuente_gas_con_vale(self):
+        periodo_actual = datetime.now().strftime('%Y-%m')
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=self.benef_a,
+            periodo=periodo_actual,
+            monto=12345,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='GAS-DET-1',
+            fuente=MovimientoSindicato.FUENTE_GAS,
+            metadata_fuente={'source_columns': {'vale_de_gas': '15 KG', 'site': 'SITE A'}},
+        )
+
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindicato_socio_list'), {'rut': self.socio_a.rut})
+        self.assertEqual(resp.status_code, 200)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Detalle fuente Gas', contenido)
+        self.assertIn('15 KG', contenido)
+
+    def test_socio_list_muestra_detalle_fuente_telefonia(self):
+        periodo_actual = datetime.now().strftime('%Y-%m')
+        benef_tel = TipoBeneficioSindicato.objects.create(
+            empresa=self.empresa_a,
+            codigo='TELS',
+            nombre='Telefonia Socio',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+        )
+        MovimientoSindicato.objects.create(
+            empresa=self.empresa_a,
+            socio=self.socio_a,
+            tipo_beneficio=benef_tel,
+            periodo=periodo_actual,
+            monto=33333,
+            estado=MovimientoSindicato.ESTADO_VALIDADO,
+            referencia_externa='TEL-SOC-1',
+            fuente=MovimientoSindicato.FUENTE_TELEFONIA,
+            metadata_fuente={'source_columns': {'cuenta': '11223344', 'pcs': '1', 'fecha_entrega': '2026-02-15'}},
+        )
+
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindicato_socio_list'), {'rut': self.socio_a.rut})
+        self.assertEqual(resp.status_code, 200)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn('Detalle fuente Telefonía', contenido)
+        self.assertIn('11223344', contenido)
 
     def test_permisos_admin_crud_socios_beneficios(self):
         self.client.force_login(self.admin_a)
@@ -587,6 +732,24 @@ class SindicatoImportViewTests(TestCase):
         tel_mov = MovimientoSindicato.objects.filter(empresa=self.empresa_a, fuente=MovimientoSindicato.FUENTE_TELEFONIA).latest('id')
         self.assertEqual(int(tel_mov.monto), 7000)
 
+    def test_preview_telefonia_muestra_campos_fuente(self):
+        self.client.force_login(self.tesoreria_a)
+        tel = (
+            'RUT,Razon social,Cuenta,PCS,Cargo Fijo,Fecha de entrega\n'
+            '12.345.678-5,Socio A,C1,1,7000,2026-06-01\n'
+        )
+        file_obj = self._csv_file(tel, name='tel_preview.csv')
+
+        preview = self.client.post(
+            reverse('core:sindicato_movimiento_import'),
+            data={'tipo_beneficio': self.benef_tel_a.id, 'periodo': '2026-06', 'archivo': file_obj},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'Cuenta')
+        self.assertContains(preview, 'Fecha entrega')
+        self.assertContains(preview, 'C1')
+        self.assertContains(preview, '2026-06-01')
+
 
 class SindicatoConsolidadoViewsTests(TestCase):
     @classmethod
@@ -916,7 +1079,7 @@ class SindiAppNavegacionTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         contenido = resp.content.decode('utf-8')
 
-        self.assertEqual(contenido.count('<li class="nav-item">'), 8)
+        self.assertEqual(contenido.count('<li class="nav-item">'), 9)
         self.assertNotIn('Importar planillas</a></li>', contenido)
         self.assertNotIn('Exportación</a></li>', contenido)
 
@@ -997,6 +1160,70 @@ class SindiAppNavegacionTests(TestCase):
         resp = self.client.get(reverse('core:sindiapp_consolidado_historial'))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, '>Exportar<')
+
+    def test_auditoria_lista_registros_y_kpis(self):
+        AuditoriaSindicato.objects.create(
+            empresa=self.empresa_a,
+            usuario=self.tesoreria_a,
+            accion='IMPORTAR_MOVIMIENTOS',
+            entidad='MovimientoSindicato',
+            entidad_id='1',
+            periodo='2026-06',
+            resumen='Importación de prueba',
+        )
+        cons = ConsolidadoMensualSindicato.objects.create(
+            empresa=self.empresa_a,
+            periodo='2026-06',
+            estado=ConsolidadoMensualSindicato.ESTADO_CERRADO,
+            total_socios=1,
+            total_monto=1000,
+        )
+        AuditoriaSindicato.objects.create(
+            empresa=self.empresa_a,
+            usuario=self.admin_a,
+            accion='CERRAR_CONSOLIDADO',
+            entidad='ConsolidadoMensualSindicato',
+            entidad_id=str(cons.pk),
+            periodo='2026-06',
+            resumen='Cierre de prueba',
+        )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_auditoria_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['auditorias']), 2)
+        self.assertContains(resp, 'Importación de movimientos')
+        self.assertContains(resp, 'Cierre de período')
+        self.assertContains(resp, reverse('core:sindiapp_consolidado_detalle', kwargs={'pk': cons.pk}))
+
+    def test_auditoria_filtra_por_tipo_de_accion(self):
+        AuditoriaSindicato.objects.create(
+            empresa=self.empresa_a,
+            usuario=self.tesoreria_a,
+            accion='IMPORTAR_MOVIMIENTOS',
+            entidad='MovimientoSindicato',
+            entidad_id='1',
+            periodo='2026-06',
+            resumen='Importación de prueba',
+        )
+        AuditoriaSindicato.objects.create(
+            empresa=self.empresa_a,
+            usuario=self.admin_a,
+            accion='EXPORTAR_CONSOLIDADO',
+            entidad='ConsolidadoMensualSindicato',
+            entidad_id='99',
+            periodo='2026-06',
+            resumen='Exportación de prueba',
+        )
+
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.get(reverse('core:sindiapp_auditoria_list'), {'accion': 'EXPORTAR_CONSOLIDADO'})
+        self.assertEqual(resp.status_code, 200)
+        auditorias = list(resp.context['auditorias'])
+        self.assertEqual(len(auditorias), 1)
+        self.assertEqual(auditorias[0].accion, 'EXPORTAR_CONSOLIDADO')
+        self.assertContains(resp, 'Exportación de prueba')
+        self.assertNotContains(resp, 'Importación de prueba')
 
     def test_consolidado_historial_dirigente_no_ve_boton_exportar(self):
         cons = ConsolidadoMensualSindicato.objects.create(
@@ -1109,3 +1336,393 @@ class SindicatoConsolidadoE2EFlowTests(TestCase):
         sum_total = sum(int(r[total_idx] or 0) for r in rows if r[0] != 'TOTAL')
         self.assertEqual(int(total_row[gas_idx] or 0), sum_gas)
         self.assertEqual(int(total_row[total_idx] or 0), sum_total)
+
+
+MEDIA_TEMP = tempfile.mkdtemp()
+
+
+@override_settings(MEDIA_ROOT=MEDIA_TEMP)
+class DocumentoSindicatoTests(TestCase):
+    """Tests para el módulo de carga inteligente de documentos (OCR)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa_a = Empresa.objects.create(nombre='Empresa Doc A', tipo='CLIENTE')
+        cls.empresa_b = Empresa.objects.create(nombre='Empresa Doc B', tipo='CLIENTE')
+
+        cls.grp_admin = Group.objects.create(name='Administracion')
+        cls.grp_tesoreria = Group.objects.create(name='Tesoreria')
+        cls.grp_dirigente = Group.objects.create(name='Dirigente')
+
+        cls.admin_a = User.objects.create_user(
+            username='admin_doc_a', email='admin_doc_a@test.cl', password='x'
+        )
+        cls.admin_a.groups.add(cls.grp_admin)
+        UserProfile.objects.create(user=cls.admin_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.tesoreria_a = User.objects.create_user(
+            username='tes_doc_a', email='tes_doc_a@test.cl', password='x'
+        )
+        cls.tesoreria_a.groups.add(cls.grp_tesoreria)
+        UserProfile.objects.create(user=cls.tesoreria_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.dirigente_a = User.objects.create_user(
+            username='dir_doc_a', email='dir_doc_a@test.cl', password='x'
+        )
+        cls.dirigente_a.groups.add(cls.grp_dirigente)
+        UserProfile.objects.create(user=cls.dirigente_a, empresa=cls.empresa_a, role='ADMIN')
+
+        cls.admin_b = User.objects.create_user(
+            username='admin_doc_b', email='admin_doc_b@test.cl', password='x'
+        )
+        cls.admin_b.groups.add(cls.grp_admin)
+        UserProfile.objects.create(user=cls.admin_b, empresa=cls.empresa_b, role='ADMIN')
+
+        cls.socio_a = SocioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            rut='12345678-5',
+            nombre='Socio A',
+            estado_laboral=SocioSindicato.ESTADO_LABORAL_ACTIVO,
+            estado=SocioSindicato.ESTADO_ACTIVO,
+        )
+        cls.benef_a = TipoBeneficioSindicato.objects.create(
+            empresa=cls.empresa_a,
+            codigo='GAS',
+            nombre='Gas',
+            estado=TipoBeneficioSindicato.ESTADO_ACTIVO,
+            orden_export=1,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(MEDIA_TEMP, ignore_errors=True)
+        super().tearDownClass()
+
+    def _jpg_file(self, name='test.jpg'):
+        from PIL import Image
+        import io
+        img = Image.new('RGB', (100, 50), color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG')
+        buf.seek(0)
+        return SimpleUploadedFile(name, buf.read(), content_type='image/jpeg')
+
+    def _png_file(self, name='test.png'):
+        from PIL import Image
+        import io
+        img = Image.new('RGB', (100, 50), color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return SimpleUploadedFile(name, buf.read(), content_type='image/png')
+
+    def _pdf_file(self, name='test.pdf'):
+        content = b'%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nxref\n0 2\n%%EOF'
+        return SimpleUploadedFile(name, content, content_type='application/pdf')
+
+    # ---- Listado ----
+
+    def test_listado_requiere_autenticacion(self):
+        resp = self.client.get(reverse('core:sindiapp_documento_list'))
+        self.assertEqual(resp.status_code, 302)
+
+    def test_listado_accesible_para_admin_tesoreria_dirigente(self):
+        for user in (self.admin_a, self.tesoreria_a, self.dirigente_a):
+            self.client.force_login(user)
+            resp = self.client.get(reverse('core:sindiapp_documento_list'))
+            self.assertEqual(resp.status_code, 200, user.username)
+
+    def test_listado_no_mezcla_tenant(self):
+        DocumentoSindicato.objects.create(
+            empresa=self.empresa_b,
+            subido_por=self.admin_b,
+            nombre_archivo='otro_tenant.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_SUBIDO,
+        )
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindiapp_documento_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.context['documentos']), [])
+
+    # ---- Subir ----
+
+    def test_subir_requiere_permiso_documentos_subir(self):
+        self.client.force_login(self.dirigente_a)
+        resp = self.client.get(reverse('core:sindiapp_documento_subir'))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_subir_jpg_crea_documento_asociado_a_empresa(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._jpg_file()},
+        )
+        self.assertEqual(resp.status_code, 302)
+        doc = DocumentoSindicato.objects.get(empresa=self.empresa_a)
+        self.assertEqual(doc.empresa, self.empresa_a)
+        self.assertEqual(doc.subido_por, self.tesoreria_a)
+        self.assertEqual(doc.tipo_archivo, 'JPG')
+
+    def test_subir_png_crea_documento(self):
+        self.client.force_login(self.admin_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._png_file()},
+        )
+        self.assertTrue(
+            DocumentoSindicato.objects.filter(empresa=self.empresa_a, tipo_archivo='PNG').exists()
+        )
+
+    def test_subir_pdf_crea_documento(self):
+        self.client.force_login(self.admin_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._pdf_file()},
+        )
+        self.assertTrue(
+            DocumentoSindicato.objects.filter(empresa=self.empresa_a, tipo_archivo='PDF').exists()
+        )
+
+    def test_subir_extension_invalida_rechaza(self):
+        self.client.force_login(self.admin_a)
+        archivo = SimpleUploadedFile('mal.txt', b'datos', content_type='text/plain')
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': archivo},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(DocumentoSindicato.objects.filter(empresa=self.empresa_a).count(), 0)
+
+    def test_subir_redirige_a_revisar(self):
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._jpg_file()},
+        )
+        self.assertEqual(resp.status_code, 302)
+        doc = DocumentoSindicato.objects.get(empresa=self.empresa_a)
+        self.assertIn(str(doc.pk), resp.url)
+
+    def test_subir_crea_auditoria(self):
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_subir'),
+            data={'archivo': self._jpg_file()},
+        )
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='SUBIR_DOCUMENTO',
+            ).exists()
+        )
+
+    # ---- Revisar ----
+
+    def test_revisar_no_permite_ver_documento_otro_tenant(self):
+        doc_b = DocumentoSindicato.objects.create(
+            empresa=self.empresa_b,
+            subido_por=self.admin_b,
+            nombre_archivo='b.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+        )
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindiapp_documento_revisar', args=[doc_b.pk]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_revisar_muestra_datos_extraidos(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='factura.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={'rut': '12.345.678-9', 'total': '100000', 'confianza': 'MEDIA'},
+        )
+        self.client.force_login(self.admin_a)
+        resp = self.client.get(reverse('core:sindiapp_documento_revisar', args=[doc.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '12.345.678-9')
+
+    # ---- Confirmar ----
+
+    def test_confirmar_crea_movimiento(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={'total': '50000', 'confianza': 'ALTA'},
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_confirmar', args=[doc.pk]),
+            data={
+                'socio': self.socio_a.pk,
+                'tipo_beneficio': self.benef_a.pk,
+                'periodo': '2026-06',
+                'monto': '50000',
+                'observacion': 'Test confirmar',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        doc.refresh_from_db()
+        self.assertEqual(doc.estado, DocumentoSindicato.ESTADO_CONFIRMADO)
+        self.assertIsNotNone(doc.movimiento_creado)
+        mov = doc.movimiento_creado
+        self.assertEqual(mov.empresa, self.empresa_a)
+        self.assertEqual(mov.fuente, MovimientoSindicato.FUENTE_DOCUMENTO)
+        self.assertEqual(int(mov.monto), 50000)
+
+    def test_confirmar_crea_auditoria(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_aud.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_confirmar', args=[doc.pk]),
+            data={
+                'socio': self.socio_a.pk,
+                'tipo_beneficio': self.benef_a.pk,
+                'periodo': '2026-06',
+                'monto': '30000',
+            },
+        )
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='CONFIRMAR_DOCUMENTO',
+            ).exists()
+        )
+
+    def test_confirmar_monto_invalido_no_crea_movimiento(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_inv.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_confirmar', args=[doc.pk]),
+            data={
+                'socio': self.socio_a.pk,
+                'tipo_beneficio': self.benef_a.pk,
+                'periodo': '2026-06',
+                'monto': '0',
+            },
+        )
+        doc.refresh_from_db()
+        self.assertIsNone(doc.movimiento_creado)
+
+    # ---- Rechazar ----
+
+    def test_rechazar_no_crea_movimiento(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_rech.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.tesoreria_a)
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_rechazar', args=[doc.pk]),
+            data={'motivo': 'Documento ilegible'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        doc.refresh_from_db()
+        self.assertEqual(doc.estado, DocumentoSindicato.ESTADO_RECHAZADO)
+        self.assertIsNone(doc.movimiento_creado)
+        self.assertEqual(MovimientoSindicato.objects.filter(empresa=self.empresa_a).count(), 0)
+
+    def test_rechazar_crea_auditoria(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_rech_aud.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.tesoreria_a)
+        self.client.post(
+            reverse('core:sindiapp_documento_rechazar', args=[doc.pk]),
+            data={'motivo': 'Motivo rechazo test'},
+        )
+        self.assertTrue(
+            AuditoriaSindicato.objects.filter(
+                empresa=self.empresa_a,
+                accion='RECHAZAR_DOCUMENTO',
+            ).exists()
+        )
+
+    def test_dirigente_no_puede_confirmar(self):
+        doc = DocumentoSindicato.objects.create(
+            empresa=self.empresa_a,
+            subido_por=self.admin_a,
+            nombre_archivo='doc_dir.jpg',
+            tipo_archivo='JPG',
+            estado=DocumentoSindicato.ESTADO_EN_REVISION,
+            datos_extraidos={},
+        )
+        self.client.force_login(self.dirigente_a)
+        resp = self.client.post(
+            reverse('core:sindiapp_documento_confirmar', args=[doc.pk]),
+            data={
+                'socio': self.socio_a.pk,
+                'tipo_beneficio': self.benef_a.pk,
+                'periodo': '2026-06',
+                'monto': '10000',
+            },
+        )
+        self.assertEqual(resp.status_code, 403)
+        doc.refresh_from_db()
+        self.assertIsNone(doc.movimiento_creado)
+
+    # ---- OCR service (sin OCR instalado → demo) ----
+
+    def test_ocr_demo_extrae_datos_basicos(self):
+        from core.services.sindicato_ocr import DemoOCRProvider
+        provider = DemoOCRProvider()
+        texto = provider.extract_text('fake_path.jpg')
+        datos = provider.extract_data(texto)
+        self.assertIn('12.345.678-9', datos.rut)
+        self.assertTrue(int(datos.total) > 0)
+        self.assertIn(datos.beneficio_sugerido, ['Gas', ''])
+
+    def test_ocr_parse_rut_en_texto(self):
+        from core.services.sindicato_ocr import _parse_texto
+        texto = "Nombre: Juan Perez\nRUT: 12.345.678-9\nFactura N°1234\nTotal: $50.000"
+        datos = _parse_texto(texto)
+        self.assertEqual(datos.rut, '12.345.678-9')
+        self.assertEqual(datos.numero_documento, '1234')
+        self.assertEqual(datos.total, '50000')
+
+    def test_ocr_error_marca_documento_como_error(self):
+        """Si el proveedor OCR falla, el documento queda en estado ERROR."""
+        from unittest.mock import patch
+
+        self.client.force_login(self.tesoreria_a)
+        with patch(
+            'core.services.sindicato_ocr.procesar_documento',
+            side_effect=RuntimeError('fallo OCR simulado'),
+        ):
+            resp = self.client.post(
+                reverse('core:sindiapp_documento_subir'),
+                data={'archivo': self._jpg_file('error_ocr.jpg')},
+            )
+        self.assertEqual(resp.status_code, 302)
+        doc = DocumentoSindicato.objects.get(empresa=self.empresa_a, nombre_archivo='error_ocr.jpg')
+        self.assertEqual(doc.estado, DocumentoSindicato.ESTADO_ERROR)
+        self.assertIn('fallo OCR simulado', doc.error_mensaje)
