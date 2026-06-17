@@ -725,11 +725,27 @@ class MovimientoSindicato(BaseModel):
     FUENTE_TELEFONIA = 'TELEFONIA'
     FUENTE_COPEUCH = 'COPEUCH'
     FUENTE_DOCUMENTO = 'DOCUMENTO'
+    FUENTE_VETERINARIA = 'VETERINARIA'
+    FUENTE_GIMNASIO = 'GIMNASIO'
+    FUENTE_HAPPYLAND = 'HAPPYLAND'
+    FUENTE_DEUDA_SINDICAL = 'DEUDA_SINDICAL'
+    FUENTE_CUOTA_EXTRAORDINARIA = 'CUOTA_EXTRAORDINARIA'
+    FUENTE_DESCUENTO_DHL = 'DESCUENTO_DHL'
+    FUENTE_CLINICA_OMI = 'CLINICA_OMI'
+    FUENTE_GENERICA = 'GENERICA'
     FUENTE_CHOICES = [
         (FUENTE_GAS, 'Gas'),
-        (FUENTE_TELEFONIA, 'Telefonia'),
+        (FUENTE_TELEFONIA, 'Telefonía'),
         (FUENTE_COPEUCH, 'Copeuch'),
         (FUENTE_DOCUMENTO, 'Documento OCR'),
+        (FUENTE_VETERINARIA, 'Veterinaria'),
+        (FUENTE_GIMNASIO, 'Gimnasio'),
+        (FUENTE_HAPPYLAND, 'Happyland'),
+        (FUENTE_DEUDA_SINDICAL, 'Deuda Sindical'),
+        (FUENTE_CUOTA_EXTRAORDINARIA, 'Cuota Extraordinaria'),
+        (FUENTE_DESCUENTO_DHL, 'Descuento DHL'),
+        (FUENTE_CLINICA_OMI, 'Clínica OMI'),
+        (FUENTE_GENERICA, 'Genérica'),
     ]
 
     empresa = models.ForeignKey(

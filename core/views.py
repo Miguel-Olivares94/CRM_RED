@@ -2499,6 +2499,24 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
             }
             & headers
         )
+        has_rut = bool(
+            {'rut', 'rut_socio', 'rut_funcionario'} & headers
+        )
+        has_nombre = bool(
+            {'nombre', 'nombre_apellido', 'razon_social', 'nombre_socio',
+             'nombre_funcionario', 'nombre_y_apellidos'} & headers
+        )
+        has_monto = bool(
+            {
+                'monto', 'valor', 'cargo_fijo',
+                'tot_dctos', 'total_descuentos', 'total_dctos',
+                'tot_dcto', 'total_dcto',
+                'descuento', 'descontar',
+                'cuota_extraor_sindicato', 'cuota_extraordinaria',
+                'total_a_pagar', 'valor_cuota',
+            }
+            & headers
+        )
         return has_rut and has_nombre and has_monto
 
     def _detectar_fila_headers_excel(self, ws, max_scan_rows=25):
@@ -2522,7 +2540,7 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
         errors = []
 
         try:
-            if name.endswith('.xlsx') or name.endswith('.xls'):
+            if name.endswith('.xlsx'):
                 import openpyxl
 
                 content = archivo.read()
@@ -2543,6 +2561,40 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                         if key:
                             item[key] = '' if raw is None else str(raw).strip()
                     rows.append(item)
+            elif name.endswith('.xls'):
+                try:
+                    import xlrd
+                    content = archivo.read()
+                    wb_xls = xlrd.open_workbook(file_contents=content)
+                    sh = wb_xls.sheets()[0]
+                    # Detectar fila de encabezados usando las mismas reglas
+                    raw_rows = [
+                        [sh.cell_value(r, c) for c in range(sh.ncols)]
+                        for r in range(min(sh.nrows, 25))
+                    ]
+                    hdr_idx = 0
+                    hdr_raw = raw_rows[0] if raw_rows else []
+                    for i, row in enumerate(raw_rows):
+                        norm_hdrs = [self._normalizar_header(c) for c in row]
+                        if self._es_fila_header_import(norm_hdrs):
+                            hdr_idx = i
+                            hdr_raw = row
+                            break
+                    headers = [self._normalizar_header(c) for c in hdr_raw]
+                    for r in range(hdr_idx + 1, sh.nrows):
+                        line = [sh.cell_value(r, c) for c in range(sh.ncols)]
+                        if all(str(v).strip() == '' for v in line):
+                            continue
+                        item = {'_fila': r + 1}
+                        for col, raw in enumerate(line):
+                            if col >= len(headers):
+                                continue
+                            key = headers[col]
+                            if key:
+                                item[key] = '' if str(raw).strip() == '' else str(raw).strip()
+                        rows.append(item)
+                except ImportError:
+                    errors.append('No se puede leer archivos .xls: instala xlrd.')
             elif name.endswith('.csv'):
                 content = archivo.read().decode('utf-8-sig')
                 reader = csv.DictReader(io.StringIO(content))
@@ -2565,7 +2617,27 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
         val = (raw or '').strip()
         if not val:
             raise InvalidOperation('Monto vacío')
-        normalized = val.replace('.', '').replace(',', '.')
+        # Distinguir formatos:
+        # - CLP con separador de miles: "62.500" o "62.500,00" → quitar puntos, coma es decimal
+        # - Decimal anglosajón: "62362.5" → mantener punto decimal
+        # - Entero simple: "62000"
+        val_clean = val.replace('$', '').replace(' ', '')
+        if ',' in val_clean and '.' in val_clean:
+            # Formato europeo: 1.234,56 → 1234.56
+            normalized = val_clean.replace('.', '').replace(',', '.')
+        elif ',' in val_clean and '.' not in val_clean:
+            # Formato europeo sin decimales: 1.234 → 1234
+            normalized = val_clean.replace(',', '.')
+        elif '.' in val_clean:
+            # Puede ser separador de miles CLP ("62.500") o decimal anglosajón ("62362.5")
+            # Si hay exactamente 3 dígitos después del punto, es separador de miles
+            import re as _re
+            if _re.match(r'^\d{1,3}(\.\d{3})+$', val_clean):
+                normalized = val_clean.replace('.', '')
+            else:
+                normalized = val_clean  # decimal anglosajón (ej. "62362.5")
+        else:
+            normalized = val_clean
         return Decimal(normalized)
 
     def _beneficio_empresa(self, empresa, beneficio_id):
@@ -2776,7 +2848,17 @@ class MovimientoSindicatoImportView(SindicatoTenantMixin, SindicatoRolePermissio
                     MovimientoSindicato.FUENTE_GAS,
                     MovimientoSindicato.FUENTE_TELEFONIA,
                     MovimientoSindicato.FUENTE_COPEUCH,
-                } else MovimientoSindicato.FUENTE_GAS,
+                } | {
+                    MovimientoSindicato.FUENTE_VETERINARIA,
+                    MovimientoSindicato.FUENTE_GIMNASIO,
+                    MovimientoSindicato.FUENTE_HAPPYLAND,
+                    MovimientoSindicato.FUENTE_DEUDA_SINDICAL,
+                    MovimientoSindicato.FUENTE_CUOTA_EXTRAORDINARIA,
+                    MovimientoSindicato.FUENTE_DESCUENTO_DHL,
+                    MovimientoSindicato.FUENTE_CLINICA_OMI,
+                    MovimientoSindicato.FUENTE_GENERICA,
+                    MovimientoSindicato.FUENTE_DOCUMENTO,
+                } else MovimientoSindicato.FUENTE_GENERICA,
                 metadata_fuente={
                     'file_name': nombre_archivo,
                     'source_row': row.get('fila'),
